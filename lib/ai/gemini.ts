@@ -30,7 +30,7 @@ export async function evaluateTriageGemini(transcript: string): Promise<Result<T
   const systemPrompt = `You are a medical triage AI for an Indian government AYUSH OPD. You will be provided with a patient-doctor transcript.
 Your tasks are:
 (a) Detect emergency red-flag symptoms (dyspnoea, chest pain with radiation, severe bleeding). If found, set redFlag to true and provide a redFlagReason.
-(b) If the complaint involves pain, apply the SOCRATES assessment method (Site, Onset, Character, Radiation, Associations, Time course, Exacerbating/relieving factors, Severity). Identify which SOCRATES fields are still unanswered.
+(b) If the complaint involves pain, apply the SOCRATES assessment method. Identify which fields are still unanswered. You must only use these exact string values for the array: "site", "onset", "character", "radiation", "associations", "timeCourse", "exacerbatingRelieving", "severity". If no pain is involved or all fields are answered, return an empty array [].
 (c) Formulate exactly one targeted follow-up question for the missing field.
 
 You MUST respond with valid JSON ONLY, strictly conforming to this schema:
@@ -44,7 +44,7 @@ Do not include markdown blocks or any other text.`;
 
   let attempt = 0;
   let validationError = "";
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", generationConfig: { responseMimeType: "application/json" } });
+  const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash", generationConfig: { responseMimeType: "application/json" } });
 
   while (attempt < 2) {
     attempt++;
