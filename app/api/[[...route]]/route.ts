@@ -1,6 +1,6 @@
 /**
  * Hono.js mount point for the VaidyaSetu API.
- * All API routes are handled by this catch-all route handler.
+ * Follows eric-sison/nextjs-honojs-boilerplate pattern.
  */
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
@@ -9,10 +9,14 @@ export const runtime = "edge";
 
 const app = new Hono().basePath("/api");
 
-// Health check — the only endpoint until Phase 9.
-app.get("/health", (c) => {
+// Mount sub-routers here (Phase 9)
+const healthRouter = new Hono().get("/health", (c) => {
   return c.json({ success: true, data: { status: "ok" } });
 });
+
+const routes = app.route("/", healthRouter);
+
+export type AppType = typeof routes;
 
 export const GET = handle(app);
 export const POST = handle(app);
