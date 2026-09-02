@@ -1,5 +1,8 @@
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
+import { transcribeAudio } from "@/lib/ai/sarvam";
+import { evaluateTriage } from "@/lib/ai/groq";
+import { evaluateTriageGemini } from "@/lib/ai/gemini";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
@@ -88,10 +91,10 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
           })
           .returning();
 
-        return sendResponse(c, newSession[0], 201);
+        return c.json({ success: true, data: newSession[0] }, 201);
       } catch (err) {
         console.error(err);
-        return sendError(c, "SESSION_CREATION_FAILED", "Could not create session", 500);
+        return c.json({ success: false, error: { code: "SESSION_CREATION_FAILED", message: "Could not create session", retryable: false } }, 500);
       }
     }
   )
@@ -134,10 +137,10 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
           }
         }
 
-        return sendResponse(c, { updated: true });
+        return c.json({ success: true, data: { updated: true } });
       } catch (err) {
         console.error(err);
-        return sendError(c, "UPDATE_FAILED", "Failed to update session", 500);
+        return c.json({ success: false, error: { code: "UPDATE_FAILED", message: "Failed to update session", retryable: false } }, 500);
       }
     }
   )
@@ -146,7 +149,7 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
     zValidator(
       "form",
       z.object({
-        file: z.custom<File>((v) => v instanceof File),
+        file: z.any(),
         doc_type: insertDocumentSchema.shape.doc_type,
       })
     ),
@@ -156,7 +159,7 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
       const bucket = c.env["vaidyasetu-documents"];
 
       if (!bucket) {
-        return sendError(c, "STORAGE_ERROR", "R2 bucket not bound", 500);
+        return c.json({ success: false, error: { code: "STORAGE_ERROR", message: "R2 bucket not bound", retryable: false } }, 500);
       }
 
       try {
@@ -173,10 +176,10 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
           })
           .returning();
 
-        return sendResponse(c, newDoc[0], 201);
+        return c.json({ success: true, data: newDoc[0] }, 201);
       } catch (err) {
         console.error(err);
-        return sendError(c, "UPLOAD_FAILED", "Failed to process document", 500);
+        return c.json({ success: false, error: { code: "UPLOAD_FAILED", message: "Failed to process document", retryable: false } }, 500);
       }
     }
   )
@@ -207,10 +210,10 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
         .set({ status: "completed", completed_at: new Date() })
         .where(eq(sessions.id, sessionId));
 
-      return sendResponse(c, summary[0], 201);
+      return c.json({ success: true, data: summary[0] }, 201);
     } catch (err) {
       console.error(err);
-      return sendError(c, "FINALIZE_FAILED", "Failed to finalize session", 500);
+      return c.json({ success: false, error: { code: "FINALIZE_FAILED", message: "Failed to finalize session", retryable: false } }, 500);
     }
   })
   .get("/:id/summary", async (c) => {
@@ -222,17 +225,55 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
       });
 
       if (!summary) {
-        return sendError(c, "NOT_FOUND", "Summary not found", 404);
+        return c.json({ success: false, error: { code: "NOT_FOUND", message: "Summary not found", retryable: false } }, 404);
       }
 
-      return sendResponse(c, summary);
+      return c.json({ success: true, data: summary });
     } catch (err) {
       console.error(err);
-      return sendError(c, "FETCH_FAILED", "Failed to fetch summary", 500);
+      return c.json({ success: false, error: { code: "FETCH_FAILED", message: "Failed to fetch summary", retryable: false } }, 500);
     }
   });
 
-const routes = app.route("/sessions", sessionRouter);
+const aiRouter = new Hono<{ Bindings: Bindings }>()
+  .post(
+    "/transcribe",
+    zValidator(
+      "form",
+      z.object({
+        file: z.any(),
+      })
+    ),
+    async (c) => {
+      const { file } = c.req.valid("form");
+      const res = await transcribeAudio(file);
+      if (!res.success) {
+        return c.json(res, 429); // Return 429 so frontend triggers Web Speech fallback
+      }
+      return c.json({ success: true, data: res.data });
+    }
+  )
+  .post(
+    "/triage",
+    zValidator("json", z.object({ transcript: z.string() })),
+    async (c) => {
+      const { transcript } = c.req.valid("json");
+      let res = await evaluateTriage(transcript);
+      if (!res.success) {
+        // Fallback to Gemini on failure
+        console.warn("Groq triage failed, falling back to Gemini", res.error);
+        res = await evaluateTriageGemini(transcript);
+      }
+      if (!res.success) {
+        return c.json({ success: false, error: { code: res.error.code, message: res.error.message, retryable: true } }, 500);
+      }
+      return c.json({ success: true, data: res.data });
+    }
+  );
+
+const routes = app
+  .route("/sessions", sessionRouter)
+  .route("/ai", aiRouter);
 
 export type AppType = typeof routes;
 

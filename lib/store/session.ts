@@ -1,7 +1,9 @@
 import { create } from "zustand";
 import type { SupportedLanguage, SessionId, PatientId } from "@/lib/types";
+import { get, set as setDb } from "idb-keyval";
+import { rpcClient } from "@/lib/api-client";
 
-interface TranscriptEntry {
+export interface TranscriptEntry {
   role: "patient" | "system";
   text: string;
   lang: SupportedLanguage;
@@ -26,6 +28,14 @@ interface SessionState {
   ayushModeEnabled: boolean;
 }
 
+interface OfflineMutation {
+  id: string;
+  sessionId: string;
+  type: "PATCH_TRANSCRIPT" | "FINALIZE";
+  payload: any;
+  timestamp: number;
+}
+
 interface SessionActions {
   startSession: (sessionId: SessionId, patientId: PatientId, language: SupportedLanguage) => void;
   resetSession: () => void;
@@ -38,6 +48,8 @@ interface SessionActions {
   addUploadedDocument: (documentId: string) => void;
   setRedFlag: (detected: boolean, reason: string | null) => void;
   setAyushMode: (enabled: boolean) => void;
+  queueOfflineMutation: (mutation: Omit<OfflineMutation, "id" | "timestamp">) => Promise<void>;
+  syncOfflineQueue: () => Promise<void>;
 }
 
 const initialState: SessionState = {
@@ -56,7 +68,7 @@ const initialState: SessionState = {
   ayushModeEnabled: false,
 };
 
-export const useSessionStore = create<SessionState & SessionActions>()((set) => ({
+export const useSessionStore = create<SessionState & SessionActions>()((set, getStore) => ({
   ...initialState,
   startSession: (sessionId, patientId, language) => set({ ...initialState, sessionId, patientId, language }),
   resetSession: () => set(initialState),
@@ -69,4 +81,52 @@ export const useSessionStore = create<SessionState & SessionActions>()((set) => 
   addUploadedDocument: (documentId) => set((state) => ({ uploadedDocumentIds: [...state.uploadedDocumentIds, documentId] })),
   setRedFlag: (detected, reason) => set({ redFlagDetected: detected, redFlagReason: reason }),
   setAyushMode: (enabled) => set({ ayushModeEnabled: enabled }),
+  queueOfflineMutation: async (mutation) => {
+    const newMutation: OfflineMutation = {
+      ...mutation,
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+    };
+    try {
+      const queue = (await get<OfflineMutation[]>("vaidyasetu-sync-queue")) || [];
+      queue.push(newMutation);
+      await setDb("vaidyasetu-sync-queue", queue);
+    } catch (e) {
+      console.warn("Failed to queue offline mutation", e);
+    }
+  },
+  syncOfflineQueue: async () => {
+    try {
+      const queue = (await get<OfflineMutation[]>("vaidyasetu-sync-queue")) || [];
+      if (queue.length === 0) return;
+
+      // Deduplicate by sessionId + timestamp
+      const deduped = queue.filter((v, i, a) => a.findIndex(t => (t.sessionId === v.sessionId && t.timestamp === v.timestamp)) === i);
+      
+      const remaining: OfflineMutation[] = [];
+      
+      for (const m of deduped) {
+        try {
+          if (m.type === "PATCH_TRANSCRIPT") {
+            const res = await rpcClient.api.sessions[":id"].$patch({
+              param: { id: m.sessionId },
+              json: m.payload
+            });
+            if (!res.ok) throw new Error("Sync failed");
+          } else if (m.type === "FINALIZE") {
+            const res = await rpcClient.api.sessions[":id"].finalize.$post({
+              param: { id: m.sessionId }
+            });
+            if (!res.ok) throw new Error("Sync failed");
+          }
+        } catch (e) {
+          // If network fails, keep it in the queue
+          remaining.push(m);
+        }
+      }
+      await setDb("vaidyasetu-sync-queue", remaining);
+    } catch (e) {
+      console.warn("Failed to sync offline queue", e);
+    }
+  }
 }));
