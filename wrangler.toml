@@ -1,0 +1,13 @@
+name = "vaidyasetu"
+compatibility_date = "2024-03-04"
+compatibility_flags = ["nodejs_compat"]
+
+main = ".worker-next/index.mjs"
+
+[assets]
+directory = ".worker-next/assets"
+
+# R2 Bucket for temporary OCR document storage
+[[r2_buckets]]
+binding = "vaidyasetu-documents"
+bucket_name = "vaidyasetu-documents"
