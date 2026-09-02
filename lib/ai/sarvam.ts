@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Result } from "@/lib/types";
+import { serverEnv } from "@/lib/env";
 
 export const TranscribeInputSchema = z.object({
   audioBase64: z.string(),
@@ -42,14 +43,57 @@ export const TranslateOutputSchema = z.object({
 });
 export type TranslateOutput = z.infer<typeof TranslateOutputSchema>;
 
-export async function transcribeAudio(input: TranscribeInput): Promise<Result<TranscribeOutput>> {
+
+export async function transcribeAudio(blob: Blob): Promise<Result<string>> {
+  try {
+    const formData = new FormData();
+    formData.append("file", blob, "audio.wav");
+    formData.append("model", "saaras:v3");
+
+    const response = await fetch("https://api.sarvam.ai/speech-to-text", {
+      method: "POST",
+      headers: {
+        "api-subscription-key": serverEnv.SARVAM_API_KEY,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return {
+        success: false,
+        error: {
+          code: "SARVAM_API_ERROR",
+          message: `Sarvam API error: ${response.status} - ${errText}`,
+          retryable: true,
+        },
+      };
+    }
+
+    const data = (await response.json()) as Record<string, unknown>;
+    // Account for potential response formats from Sarvam
+    const transcript = (typeof data.transcript === "string" ? data.transcript : (typeof data.text === "string" ? data.text : ""));
+    
+    return { success: true, data: transcript };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return {
+      success: false,
+      error: {
+        code: "SARVAM_NETWORK_ERROR",
+        message: msg,
+        retryable: true,
+      },
+    };
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function synthesizeSpeech(_input: SynthesizeInput): Promise<Result<SynthesizeOutput>> {
   return { success: false, error: { code: "NOT_IMPLEMENTED", message: "Stub", retryable: false } };
 }
 
-export async function synthesizeSpeech(input: SynthesizeInput): Promise<Result<SynthesizeOutput>> {
-  return { success: false, error: { code: "NOT_IMPLEMENTED", message: "Stub", retryable: false } };
-}
-
-export async function translateText(input: TranslateInput): Promise<Result<TranslateOutput>> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function translateText(_input: TranslateInput): Promise<Result<TranslateOutput>> {
   return { success: false, error: { code: "NOT_IMPLEMENTED", message: "Stub", retryable: false } };
 }
