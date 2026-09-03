@@ -26,12 +26,12 @@ export async function extractDocumentOcr(_input: OcrInput): Promise<Result<OcrOu
 
 const genAI = new GoogleGenerativeAI(serverEnv.GEMINI_API_KEY);
 
-export async function evaluateTriageGemini(transcript: string): Promise<Result<TriageOutput>> {
+export async function evaluateTriageGemini(transcript: string, language: string = "en"): Promise<Result<TriageOutput>> {
   const systemPrompt = `You are a medical triage AI for an Indian government AYUSH OPD. You will be provided with a patient-doctor transcript.
 Your tasks are:
 (a) Detect emergency red-flag symptoms (dyspnoea, chest pain with radiation, severe bleeding). If found, set redFlag to true and provide a redFlagReason.
 (b) If the complaint involves pain, apply the SOCRATES assessment method. Identify which fields are still unanswered. You must only use these exact string values for the array: "site", "onset", "character", "radiation", "associations", "timeCourse", "exacerbatingRelieving", "severity". If no pain is involved or all fields are answered, return an empty array [].
-(c) Formulate exactly one targeted follow-up question for the missing field.
+(c) Formulate exactly one targeted follow-up question for the missing field. IMPORTANT: Write this nextQuestion in the language code: ${language} (en=English, hi=Hindi/Hinglish, ta=Tamil/Tanglish).
 
 You MUST respond with valid JSON ONLY, strictly conforming to this schema:
 {

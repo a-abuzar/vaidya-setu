@@ -23,7 +23,18 @@ export default function KioskPage() {
   } = useSessionStore();
 
   const [isOnline, setIsOnline] = useState(true);
+  const [hasStarted, setHasStarted] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<'hi' | 'en' | 'ta'>('hi');
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Initialize Voices (Browser quirk: getVoices() is often empty at first load)
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -52,6 +63,21 @@ export default function KioskPage() {
     };
   }, [syncOfflineQueue]);
 
+  const playAudio = (text: string) => {
+    if (!('speechSynthesis' in window)) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    // Find a Hindi voice if available, otherwise fallback
+    const voices = window.speechSynthesis.getVoices();
+    const hiVoice = voices.find(v => v.lang.includes('hi')) || voices.find(v => v.lang.includes('en'));
+    if (hiVoice) utterance.voice = hiVoice;
+    utterance.lang = 'hi-IN'; // Works well for Hinglish too
+    utterance.rate = 0.95;
+    utterance.pitch = 1.05;
+    
+    window.speechSynthesis.cancel(); // Stop current playing
+    window.speechSynthesis.speak(utterance);
+  };
+
   const handleTranscript = async (text: string) => {
     if (!text.trim()) return;
 
@@ -71,7 +97,7 @@ export default function KioskPage() {
 
     try {
       const triageRes = await rpcClient.api.ai.triage.$post({
-        json: { transcript: fullHistory },
+        json: { transcript: fullHistory, language: selectedLanguage },
       });
 
       if (!triageRes.ok) {
@@ -98,6 +124,7 @@ export default function KioskPage() {
           lang: "hi",
           timestamp: new Date().toISOString(),
         });
+        playAudio(nextQuestion);
       }
 
       if (sessionId) {
@@ -128,6 +155,58 @@ export default function KioskPage() {
       setProcessing(false);
     }
   };
+
+  const handleStart = () => {
+    setHasStarted(true);
+    let initialQ = "Namaste. How are you feeling today?";
+    if (selectedLanguage === 'hi') initialQ = "नमस्ते। आज आप कैसा महसूस कर रहे हैं?";
+    if (selectedLanguage === 'ta') initialQ = "வணக்கம். இன்று நீங்கள் எப்படி உணருகிறீர்கள்?";
+    
+    setCurrentQuestion(initialQ);
+    playAudio(initialQ);
+  };
+
+  if (!hasStarted) {
+    return (
+      <main className="min-h-screen bg-slate-50 flex items-center justify-center font-sans p-4 selection:bg-teal-100">
+        <div className="w-full max-w-xl bg-white rounded-3xl shadow-xl border border-slate-100 p-10 flex flex-col items-center text-center">
+          <div className="bg-teal-50 p-4 rounded-full border border-teal-100 mb-6">
+            <Leaf className="text-teal-600 w-10 h-10" />
+          </div>
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">Welcome to VaidyaSetu</h1>
+          <p className="text-slate-500 mb-10">Please select your preferred language for the consultation. (Hinglish and Tanglish are supported!)</p>
+          
+          <div className="flex gap-4 w-full mb-10">
+            {[
+              { id: 'hi', label: 'Hindi / Hinglish', native: 'हिंदी' },
+              { id: 'en', label: 'English', native: 'English' },
+              { id: 'ta', label: 'Tamil / Tanglish', native: 'தமிழ்' }
+            ].map((lang) => (
+              <button
+                key={lang.id}
+                onClick={() => setSelectedLanguage(lang.id as 'hi' | 'en' | 'ta')}
+                className={`flex-1 flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all duration-200 ${
+                  selectedLanguage === lang.id 
+                    ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm shadow-teal-500/20' 
+                    : 'border-slate-200 hover:border-teal-200 hover:bg-slate-50 text-slate-600'
+                }`}
+              >
+                <span className="font-bold text-lg mb-1">{lang.native}</span>
+                <span className="text-xs opacity-75">{lang.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <button 
+            onClick={handleStart}
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold text-lg py-4 rounded-2xl shadow-lg shadow-teal-600/30 transition-all hover:scale-[1.02]"
+          >
+            Start Consultation
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 flex items-center justify-center font-sans p-4 md:p-6 lg:p-8 selection:bg-teal-100">

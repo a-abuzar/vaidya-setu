@@ -11,11 +11,14 @@ export function HoldToSpeak({ onTranscript }: { onTranscript: (text: string) => 
   const audioChunks = useRef<BlobPart[]>([]);
   const recognition = useRef<any>(null);
 
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const pulseRef = useRef<HTMLDivElement>(null);
+
   const startRecording = useCallback(async (e: React.SyntheticEvent) => {
-    e.preventDefault(); // Prevent default mobile behaviors like text selection or context menus
+    e.preventDefault();
     if (isRecording) return;
     
-    // Check if running on HTTP on mobile (getUserMedia requires HTTPS or localhost)
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       alert("Microphone access is blocked. If you are testing on a mobile device, you must use HTTPS (e.g., via ngrok) or localhost. The browser blocks microphones on plain HTTP network IPs.");
       return;
@@ -31,6 +34,32 @@ export function HoldToSpeak({ onTranscript }: { onTranscript: (text: string) => 
         if (e.data.size > 0) audioChunks.current.push(e.data);
       };
 
+      // Audio analysis for dynamic haptic visualizer
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = audioCtx;
+      const analyser = audioCtx.createAnalyser();
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+      analyser.fftSize = 256;
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      const updateVolume = () => {
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        const average = sum / dataArray.length;
+        const scale = 1 + (average / 128); // Dynamic scale based on volume
+        
+        if (pulseRef.current) {
+          pulseRef.current.style.transform = `scale(${scale})`;
+          pulseRef.current.style.opacity = `${Math.min(0.8, average / 100)}`;
+        }
+        animationFrameRef.current = requestAnimationFrame(updateVolume);
+      };
+      
+      updateVolume();
       recorder.start();
       setIsRecording(true);
     } catch (err) {
@@ -43,6 +72,10 @@ export function HoldToSpeak({ onTranscript }: { onTranscript: (text: string) => 
     if (e) e.preventDefault();
     if (!mediaRecorder.current || mediaRecorder.current.state === "inactive") return;
     
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    if (audioContextRef.current) audioContextRef.current.close();
+    if (pulseRef.current) pulseRef.current.style.transform = 'scale(1)';
+
     return new Promise<void>((resolve) => {
       mediaRecorder.current!.onstop = async () => {
         setIsRecording(false);
@@ -106,9 +139,9 @@ export function HoldToSpeak({ onTranscript }: { onTranscript: (text: string) => 
       {/* Animated audio ripples when recording */}
       {isRecording && (
         <>
-          <div className="absolute inset-0 rounded-full animate-ping bg-red-400 opacity-30 pointer-events-none" />
-          <div className="absolute -inset-4 rounded-full bg-red-200 animate-pulse opacity-40 pointer-events-none" />
-          <div className="absolute -inset-8 rounded-full bg-red-100 animate-pulse opacity-20 pointer-events-none" style={{ animationDelay: '150ms' }} />
+          <div ref={pulseRef} className="absolute inset-0 rounded-full bg-rose-400 opacity-30 pointer-events-none transition-transform duration-75" />
+          <div className="absolute -inset-4 rounded-full bg-rose-200 animate-pulse opacity-40 pointer-events-none" />
+          <div className="absolute -inset-8 rounded-full bg-rose-100 animate-pulse opacity-20 pointer-events-none" style={{ animationDelay: '150ms' }} />
         </>
       )}
       

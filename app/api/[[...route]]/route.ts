@@ -255,14 +255,14 @@ const aiRouter = new Hono<{ Bindings: Bindings }>()
   )
   .post(
     "/triage",
-    zValidator("json", z.object({ transcript: z.string() })),
+    zValidator("json", z.object({ transcript: z.string(), language: z.enum(["en", "hi", "ta"]).optional() })),
     async (c) => {
-      const { transcript } = c.req.valid("json");
-      let res = await evaluateTriage(transcript);
+      const { transcript, language } = c.req.valid("json");
+      let res = await evaluateTriage(transcript, language || "en");
       if (!res.success) {
         // Fallback to Gemini on failure
         console.warn("Groq triage failed, falling back to Gemini", res.error);
-        res = await evaluateTriageGemini(transcript);
+        res = await evaluateTriageGemini(transcript, language || "en");
       }
       if (!res.success) {
         return c.json({ success: false, error: { code: res.error.code, message: res.error.message, retryable: true } }, 500);
