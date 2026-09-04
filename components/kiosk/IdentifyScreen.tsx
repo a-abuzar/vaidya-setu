@@ -149,6 +149,43 @@ export function IdentifyScreen(): React.ReactElement {
     }
   };
 
+  /** Skip ABHA verification — creates a session with unverified ABHA data and proceeds. */
+  const handleSkipAbha = async (): Promise<void> => {
+    setIsLoading(true);
+    setErrorMsg(null);
+    try {
+      const res = await rpcClient.api.sessions.$post({
+        json: {
+          kiosk_id: "kiosk-1",
+          patient: {
+            full_name: "ABHA Patient (Unverified)",
+            date_of_birth: new Date("1980-01-01"),
+            gender: "other",
+            phone: abhaNumber.trim() || "0000000000",
+            preferred_language: language,
+            abha_id: abhaNumber.trim() || null,
+          },
+        },
+      });
+      if (!res.ok) throw new Error(dict.errors.networkError);
+      const data = await res.json();
+      if (!data.success) throw new Error(dict.errors.generic);
+      const session = data.data;
+      startSession(
+        session.id as SessionId,
+        session.patient_id as PatientId,
+        language
+      );
+      nextStep();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : dict.errors.generic;
+      setErrorMsg(message);
+      console.error("Skip ABHA session creation failed:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <main className="flex-1 flex flex-col items-center justify-start p-6 overflow-y-auto">
       <div className="w-full max-w-2xl flex flex-col gap-6">
@@ -220,7 +257,7 @@ export function IdentifyScreen(): React.ReactElement {
           </div>
 
           {selectedPath === "abha" && !abhaPathDisabled && (
-            <div className="flex flex-col gap-4 mt-2">
+            <div className="flex flex-col gap-3 mt-2">
               <input
                 type="tel"
                 inputMode="numeric"
@@ -240,6 +277,22 @@ export function IdentifyScreen(): React.ReactElement {
                   <Loader2 className="w-6 h-6 animate-spin" />
                 ) : null}
                 {dict.identify.abhaPath.verifyButton}
+              </button>
+              {/* Skip verification — for demo / testing purposes */}
+              <button
+                onClick={() =>
+                  handleSkipAbha().catch((e: unknown) =>
+                    console.error("Skip ABHA error:", e)
+                  )
+                }
+                disabled={isLoading}
+                className="kiosk-touch w-full flex items-center justify-center gap-2 px-6 py-4 rounded-2xl border-2 border-dashed border-border text-muted-foreground text-base font-medium hover:border-primary/40 hover:text-foreground disabled:opacity-40 transition-all"
+              >
+                {language === "hi"
+                  ? "सत्यापन छोड़ें"
+                  : language === "ta"
+                    ? "சரிபார்ப்பை தவிர்க்கவும்"
+                    : "Skip verification"}
               </button>
             </div>
           )}
