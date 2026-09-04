@@ -82,10 +82,10 @@ interface FinalizeMutation {
 
 type OfflineMutationData = PatchTranscriptMutation | FinalizeMutation;
 
-interface OfflineMutation extends OfflineMutationData {
+type OfflineMutation = OfflineMutationData & {
   id: string;
   timestamp: number;
-}
+};
 
 // ──────────────────────────────────────────────────────────────────────
 // State

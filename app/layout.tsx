@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     "AI-native patient case-taking kiosk for Indian government AYUSH OPDs. Voice-first, multilingual, ABDM-integrated.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">): React.ReactElement {
+export default function RootLayout({ children }: { children: React.ReactNode }): React.ReactElement {
   return (
     <ClerkProvider>
       <html
