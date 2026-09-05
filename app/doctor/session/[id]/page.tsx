@@ -40,8 +40,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTab, TabsPanel } from "@/components/ui/tabs";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { DoctorTopBar } from "@/app/(doctor)/components/DoctorTopBar";
-import { DoshaChart, type DoshaWeights } from "@/app/(doctor)/components/DoshaChart";
+import { DoctorTopBar } from "@/app/doctor/components/DoctorTopBar";
+import { DoshaChart, type DoshaWeights } from "@/app/doctor/components/DoshaChart";
 import { toast } from "sonner";
 
 interface SessionDetail {

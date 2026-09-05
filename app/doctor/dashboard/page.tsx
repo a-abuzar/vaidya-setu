@@ -32,7 +32,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { DoctorTopBar } from "@/app/(doctor)/components/DoctorTopBar";
+import { DoctorTopBar } from "@/app/doctor/components/DoctorTopBar";
 
 interface SessionRow {
   id: string;

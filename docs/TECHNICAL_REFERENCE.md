@@ -660,14 +660,14 @@ The patient journey is six steps; each step renders inside the shared
    finalization. A 4-character take-away code and a visual QR-style
    dot grid are shown after a successful send.
 
-### Doctor dashboard (`app/(doctor)/`)
+### Doctor dashboard (`app/doctor/`)
 
 - `/doctor/dashboard` — list of sessions from `/api/doctor/sessions`
   with red-flag badges, document counts, and status. Protected by
   Clerk middleware (`proxy.ts`).
 - `/doctor/session/[id]` — full structured summary, transcript,
   document timeline, AYUSH dosha visualization
-  (`app/(doctor)/components/DoshaChart.tsx`), and three action buttons:
+  (`app/doctor/components/DoshaChart.tsx`), and three action buttons:
   Edit (PATCH `/api/sessions/:id`), Push to FHIR (calls
   `lib/ai/abdm.ts::mapSummaryToFHIR` server-side via
   `/api/doctor/sessions/:id/fhir`), Approve (sets
@@ -760,14 +760,14 @@ The patient journey is six steps; each step renders inside the shared
    before finalization. A 4-character take-away code and a
    visual QR-style dot grid are shown after a successful send.
 
-### Doctor dashboard (`app/(doctor)/`)
+### Doctor dashboard (`app/doctor/`)
 
 - `/doctor/dashboard` — list of sessions from `/api/doctor/sessions`
   with red-flag badges, document counts, and status. Protected by
   Clerk middleware (`proxy.ts`).
 - `/doctor/session/[id]` — full structured summary, transcript,
   document timeline, AYUSH dosha visualization
-  (`app/(doctor)/components/DoshaChart.tsx`), and three action buttons:
+  (`app/doctor/components/DoshaChart.tsx`), and three action buttons:
   Edit (PATCH `/api/sessions/:id`), Push to FHIR (calls
   `lib/ai/abdm.ts::mapSummaryToFHIR` server-side via
   `/api/doctor/sessions/:id/fhir`), Approve (sets
@@ -1100,7 +1100,7 @@ Each phase is a prompt block designed for AI-assisted code generation. Validatio
 | RPC client | `lib/api-client.ts` | Type-safe Hono client |
 | Tests | `lib/ai/abdm.test.ts` | ABDM token + FHIR mapping tests |
 | Patient flow screens | `app/(kiosk)/*` | Welcome / Consent / Identify / Encounter / Documents / Summary (each with KioskShell) |
-| Doctor dashboard | `app/(doctor)/*` | Session queue, per-session review with dosha chart |
+| Doctor dashboard | `app/doctor/*` | Session queue, per-session review with dosha chart |
 | Anon session endpoint | `/api/sessions/anon` | POST: creates patient placeholder + session + accepts consent payload |
 | Doctor API | `/api/doctor/*` | GET sessions list, GET session detail, POST approve, POST fhir-push |
 
@@ -1166,7 +1166,7 @@ app/
     encounter/page.tsx                    # Step 4 — Voice/touch interview
     documents/page.tsx                    # Step 5 — Camera capture
     summary/page.tsx                      # Step 6 — Patient-facing review
-  (doctor)/
+  doctor/
     layout.tsx                            # Clerk auth guard
     dashboard/page.tsx                    # Session queue
     session/[id]/page.tsx                 # Per-session review + dosha chart
