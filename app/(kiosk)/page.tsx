@@ -7,13 +7,13 @@ import { IdentifyScreen } from "@/components/kiosk/IdentifyScreen";
 import { EncounterScreen } from "@/components/kiosk/EncounterScreen";
 import { DocumentScanScreen } from "@/components/kiosk/DocumentScanScreen";
 import { SummaryReviewScreen } from "@/components/kiosk/SummaryReviewScreen";
+import { CompleteScreen } from "@/components/kiosk/CompleteScreen";
 
 /**
- * Kiosk flow orchestrator.
- * Renders exactly one screen component at a time based on the currentStep
- * from the Zustand session store. No logic lives here — it's pure routing.
+ * Main Kiosk Page orchestrator.
+ * Renders exactly one step component based on the Zustand store's currentStep.
  */
-export default function KioskPage(): React.ReactElement {
+export default function KioskPage(): React.ReactElement | null {
   const currentStep = useSessionStore((s) => s.currentStep);
 
   switch (currentStep) {
@@ -30,12 +30,8 @@ export default function KioskPage(): React.ReactElement {
     case "summary_review":
       return <SummaryReviewScreen />;
     case "complete":
-      return <WelcomeScreen />;
-    default: {
-      // Exhaustiveness check — TypeScript will catch unhandled KioskStep values
-      const _exhaustive: never = currentStep;
-      console.error("Unknown kiosk step:", _exhaustive);
-      return <WelcomeScreen />;
-    }
+      return <CompleteScreen />;
+    default:
+      return null;
   }
 }

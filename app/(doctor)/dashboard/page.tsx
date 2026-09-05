@@ -1,164 +1,106 @@
 import { db } from "@/lib/db";
-import { sessions, patients, conversations, summaries } from "@/lib/db/schema";
-import { desc, eq } from "drizzle-orm";
-import { SessionCard } from "@/components/doctor/SessionCard";
-import { Activity, Users } from "lucide-react";
+import { sessions, patients } from "@/lib/db/schema";
+import { eq, desc } from "drizzle-orm";
+import Link from "next/link";
+import { AlertTriangle, Clock, CheckCircle2, ChevronRight, Activity } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
-/**
- * Physician dashboard — lists recent patient sessions.
- * Server component — fetches directly from DB.
- */
-export default async function DoctorDashboardPage(): Promise<React.ReactElement> {
-  let sessionRows: Array<{
-    id: string;
-    status: string;
-    started_at: Date;
-    completed_at: Date | null;
-    patient_name: string | null;
-    chief_complaint: string | null;
-    red_flag: boolean;
-  }> = [];
+export const dynamic = "force-dynamic";
 
-  let fetchError: string | null = null;
-
-  try {
-    const raw = await db
-      .select({
-        id: sessions.id,
-        status: sessions.status,
-        started_at: sessions.started_at,
-        completed_at: sessions.completed_at,
-        patient_name: patients.full_name,
-        red_flag: conversations.red_flag,
-        chief_complaint: summaries.chief_complaint,
-      })
-      .from(sessions)
-      .leftJoin(patients, eq(sessions.patient_id, patients.id))
-      .leftJoin(conversations, eq(conversations.session_id, sessions.id))
-      .leftJoin(summaries, eq(summaries.session_id, sessions.id))
-      .orderBy(desc(sessions.started_at))
-      .limit(50);
-
-    sessionRows = raw.map((r) => ({
-      id: r.id,
-      status: r.status,
-      started_at: r.started_at,
-      completed_at: r.completed_at,
-      patient_name: r.patient_name,
-      chief_complaint: r.chief_complaint ?? null,
-      red_flag: r.red_flag ?? false,
-    }));
-  } catch (err: unknown) {
-    console.error("Dashboard fetch error:", err);
-    fetchError =
-      err instanceof Error
-        ? err.message
-        : "Failed to load sessions from database.";
-  }
-
-  const redFlagCount = sessionRows.filter((s) => s.red_flag).length;
-  const inProgressCount = sessionRows.filter(
-    (s) => s.status === "in_progress"
-  ).length;
+export default async function DashboardPage() {
+  const recentSessions = await db
+    .select({
+      session: sessions,
+      patient: patients,
+    })
+    .from(sessions)
+    .innerJoin(patients, eq(sessions.patient_id, patients.id))
+    .orderBy(desc(sessions.started_at))
+    .limit(20);
 
   return (
-    <div className="p-8">
-      {/* Header */}
+    <div className="p-8 max-w-6xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground mb-1">
-          Patient Sessions
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          Today&apos;s AYUSH OPD encounters
-        </p>
+        <h1 className="text-3xl font-bold text-foreground mb-2">OPD Dashboard</h1>
+        <p className="text-muted-foreground">Recent patient triage and intake summaries.</p>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <StatCard
-          icon={<Users className="w-5 h-5 text-primary" />}
-          label="Total Sessions"
-          value={String(sessionRows.length)}
-          color="primary"
-        />
-        <StatCard
-          icon={<Activity className="w-5 h-5 text-amber-600" />}
-          label="In Progress"
-          value={String(inProgressCount)}
-          color="amber"
-        />
-        <StatCard
-          icon={<Activity className="w-5 h-5 text-destructive" />}
-          label="Red Flags"
-          value={String(redFlagCount)}
-          color="destructive"
-        />
-      </div>
-
-      {/* Error state */}
-      {fetchError && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-6 mb-6">
-          <p className="font-semibold text-destructive">
-            Could not load sessions
-          </p>
-          <p className="text-sm text-destructive/80 mt-1">{fetchError}</p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Check that DATABASE_URL is set and the database is reachable.
-          </p>
-        </div>
-      )}
-
-      {/* Session list */}
-      {!fetchError && sessionRows.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="bg-primary/10 p-5 rounded-2xl mb-4">
-            <Users className="w-10 h-10 text-primary" />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="p-6 bg-card rounded-2xl border border-border shadow-sm flex items-center gap-4">
+          <div className="p-4 bg-primary/10 rounded-xl text-primary"><Activity className="w-8 h-8" /></div>
+          <div>
+            <p className="text-3xl font-bold">{recentSessions.length}</p>
+            <p className="text-sm font-medium text-muted-foreground">Today's Intakes</p>
           </div>
-          <p className="text-lg font-semibold text-foreground mb-1">
-            No sessions yet
-          </p>
-          <p className="text-muted-foreground text-sm">
-            Patient sessions will appear here once the kiosk is used.
-          </p>
         </div>
-      )}
-
-      {!fetchError && sessionRows.length > 0 && (
-        <div className="flex flex-col gap-3">
-          {sessionRows.map((session) => (
-            <SessionCard key={session.id} session={session} />
-          ))}
+        <div className="p-6 bg-card rounded-2xl border border-border shadow-sm flex items-center gap-4">
+          <div className="p-4 bg-destructive/10 rounded-xl text-destructive"><AlertTriangle className="w-8 h-8" /></div>
+          <div>
+            <p className="text-3xl font-bold">{recentSessions.filter(s => s.session.status === 'escalated').length}</p>
+            <p className="text-sm font-medium text-muted-foreground">Escalations</p>
+          </div>
         </div>
-      )}
-    </div>
-  );
-}
+      </div>
 
-// ─── Helper subcomponent ──────────────────────────────────────────────────────
+      <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
+        <div className="px-6 py-4 border-b border-border bg-muted/30">
+          <h2 className="font-semibold">Patient Queue</h2>
+        </div>
+        <div className="divide-y divide-border">
+          {recentSessions.length === 0 ? (
+            <div className="p-12 text-center text-muted-foreground">No sessions recorded yet.</div>
+          ) : (
+            recentSessions.map(({ session, patient }) => (
+              <Link 
+                key={session.id} 
+                href={`/dashboard/${session.id}`}
+                className="flex items-center gap-6 p-6 hover:bg-muted/50 transition-colors group"
+              >
+                {/* Status Indicator */}
+                <div className="flex-shrink-0">
+                  {session.status === 'escalated' ? (
+                    <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">
+                      <AlertTriangle className="w-6 h-6" />
+                    </div>
+                  ) : session.status === 'completed' ? (
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                      <CheckCircle2 className="w-6 h-6" />
+                    </div>
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-accent">
+                      <Clock className="w-6 h-6" />
+                    </div>
+                  )}
+                </div>
 
-function StatCard({
-  icon,
-  label,
-  value,
-  color,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  color: "primary" | "amber" | "destructive";
-}): React.ReactElement {
-  const bgClass =
-    color === "primary"
-      ? "bg-primary/5"
-      : color === "amber"
-        ? "bg-amber-50"
-        : "bg-destructive/5";
+                {/* Patient Info */}
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-foreground mb-1">
+                    {patient.full_name} <span className="text-sm font-normal text-muted-foreground ml-2">({patient.gender}, DOB: {new Date(patient.date_of_birth).toLocaleDateString()})</span>
+                  </h3>
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground font-medium">
+                    <span className="capitalize px-2 py-0.5 rounded-md bg-secondary border border-border">
+                      {session.status.replace('_', ' ')}
+                    </span>
+                    <span>•</span>
+                    <span>{formatDistanceToNow(new Date(session.started_at))} ago</span>
+                    {patient.abha_linked && (
+                      <>
+                        <span>•</span>
+                        <span className="text-primary font-bold">ABHA Linked</span>
+                      </>
+                    )}
+                  </div>
+                </div>
 
-  return (
-    <div className={`rounded-xl border border-border p-4 ${bgClass}`}>
-      <div className="flex items-center gap-2 mb-2">{icon}</div>
-      <p className="text-2xl font-bold text-foreground">{value}</p>
-      <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+                <div className="text-muted-foreground group-hover:text-foreground transition-colors group-hover:translate-x-1 transform duration-200">
+                  <ChevronRight className="w-6 h-6" />
+                </div>
+              </Link>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }

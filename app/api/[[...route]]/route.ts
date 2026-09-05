@@ -62,6 +62,8 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
           id: true,
           created_at: true,
           abha_linked: true,
+        }).extend({
+          date_of_birth: z.coerce.date()
         }),
       })
     ),

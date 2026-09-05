@@ -219,15 +219,9 @@ export const useSessionStore = create<SessionState & SessionActions>()((set, _ge
   // ── Session lifecycle ──────────────────────────────────────────────
   startSession: (sessionId, patientId, language) =>
     set({
-      ...initialState,
       sessionId,
       patientId,
       language,
-      currentStep: "consent",
-      // Preserve accessibility preferences across sessions
-      textSizeMultiplier: _getStore().textSizeMultiplier,
-      audioEnabled: _getStore().audioEnabled,
-      highContrastMode: _getStore().highContrastMode,
     }),
 
   resetSession: () =>

@@ -37,8 +37,10 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }): React.ReactElement {
-  return (
-    <ClerkProvider>
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  const hasValidClerkKey = publishableKey && publishableKey !== "mock-clerk-pub-key" && publishableKey.startsWith("pk_");
+
+  const body = (
       <html
         lang="en"
         className={`${geistSans.variable} ${geistMono.variable} ${notoDevanagari.variable} ${notoTamil.variable} h-full antialiased`}
@@ -50,6 +52,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }):
           <Toaster position="top-center" richColors />
         </body>
       </html>
-    </ClerkProvider>
   );
+
+  if (hasValidClerkKey) {
+    return <ClerkProvider>{body}</ClerkProvider>;
+  }
+
+  return body;
 }

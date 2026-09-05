@@ -1,183 +1,124 @@
 "use client";
 
-import { useSessionStore, type ConsentPurpose } from "@/lib/store/session";
+import { useSessionStore } from "@/lib/store/session";
 import { getDictionary } from "@/lib/i18n";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, Volume2 } from "lucide-react";
-
-/** Consent purposes in display order. */
-const CONSENT_ORDER: ConsentPurpose[] = [
-  "clinical_data_collection",
-  "temporary_storage",
-  "data_sharing_with_physician",
-  "abdm_health_record_linking",
-];
-
-/** Purposes that must be granted before continuing. */
-const REQUIRED_PURPOSES = new Set<ConsentPurpose>([
-  "clinical_data_collection",
-  "temporary_storage",
-]);
-
-function speakText(text: string, lang: string): void {
-  if (!("speechSynthesis" in window)) return;
-  const utterance = new SpeechSynthesisUtterance(text);
-  const voices = window.speechSynthesis.getVoices();
-  const match = voices.find((v) => v.lang.startsWith(lang));
-  if (match) utterance.voice = match;
-  utterance.lang =
-    lang === "hi" ? "hi-IN" : lang === "ta" ? "ta-IN" : "en-IN";
-  utterance.rate = 0.85;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utterance);
-}
+import { Volume2 } from "lucide-react";
+import type { ConsentPurpose } from "@/lib/store/session";
 
 /**
- * Consent Screen — DPDP Act 2023 granular consent.
- * Required consents: clinical_data_collection, temporary_storage.
- * Optional: abdm_health_record_linking, data_sharing_with_physician.
+ * DPDP Act 2023 Consent Screen
  */
 export function ConsentScreen(): React.ReactElement {
   const language = useSessionStore((s) => s.language);
+  const audioEnabled = useSessionStore((s) => s.audioEnabled);
   const consents = useSessionStore((s) => s.consents);
   const setConsent = useSessionStore((s) => s.setConsent);
   const nextStep = useSessionStore((s) => s.nextStep);
-  const audioEnabled = useSessionStore((s) => s.audioEnabled);
 
-  const dict = getDictionary(language);
+  const dict = getDictionary(language).consent;
 
-  const langCode = language === "hi" ? "hi" : language === "ta" ? "ta" : "en";
-
-  const requiredGranted = Array.from(REQUIRED_PURPOSES).every(
-    (p) => consents.find((c) => c.purpose === p)?.granted === true
-  );
-
-  const handleToggle = (purpose: ConsentPurpose, granted: boolean): void => {
-    setConsent(purpose, granted);
+  const playAudio = (text: string): void => {
+    if (!audioEnabled || !("speechSynthesis" in window)) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    const voiceMatch = voices.find((v) =>
+      v.lang.startsWith(language === "hi" ? "hi" : language === "ta" ? "ta" : "en")
+    );
+    if (voiceMatch) utterance.voice = voiceMatch;
+    utterance.lang = language === "hi" ? "hi-IN" : language === "ta" ? "ta-IN" : "en-IN";
+    utterance.rate = 0.9;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
   };
 
-  const handlePlayDescription = (description: string): void => {
-    if (!audioEnabled) return;
-    speakText(description, langCode);
+  const isGranted = (purpose: ConsentPurpose): boolean => {
+    return consents.find((c) => c.purpose === purpose)?.granted ?? false;
   };
 
-  const handleContinue = (): void => {
-    nextStep();
-  };
+  const allRequiredGranted =
+    isGranted("clinical_data_collection") &&
+    isGranted("temporary_storage") &&
+    isGranted("data_sharing_with_physician");
+
+  const purposes: { id: ConsentPurpose; required: boolean }[] = [
+    { id: "clinical_data_collection", required: true },
+    { id: "abdm_health_record_linking", required: false },
+    { id: "data_sharing_with_physician", required: true },
+    { id: "temporary_storage", required: true },
+  ];
 
   return (
-    <main className="flex-1 flex flex-col items-center justify-start p-6 overflow-y-auto">
-      <div className="w-full max-w-2xl flex flex-col gap-6">
-        {/* Header */}
-        <div className="flex flex-col items-center text-center pt-4 pb-2">
-          <div className="bg-primary/10 p-4 rounded-2xl mb-4">
-            <ShieldCheck className="w-12 h-12 text-primary" />
-          </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            {dict.consent.title}
-          </h1>
-          <p className="text-lg text-muted-foreground">
-            {dict.consent.subtitle}
-          </p>
+    <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center">
+      <div className="w-full max-w-3xl space-y-8">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-3">{dict.title}</h1>
+          <p className="text-lg text-muted-foreground">{dict.subtitle}</p>
         </div>
 
-        {/* Consent items */}
-        <div className="flex flex-col gap-4">
-          {CONSENT_ORDER.map((purpose) => {
-            const consentItem = consents.find((c) => c.purpose === purpose);
-            const isGranted = consentItem?.granted ?? false;
-            const isRequired = REQUIRED_PURPOSES.has(purpose);
-            const purposeDict =
-              dict.consent.purposes[
-                purpose as keyof typeof dict.consent.purposes
-              ];
+        <div className="space-y-4">
+          {purposes.map((p) => {
+            const purposeDict = dict.purposes[p.id];
+            const granted = isGranted(p.id);
 
             return (
               <div
-                key={purpose}
-                className={`rounded-2xl border-2 p-5 transition-colors ${
-                  isGranted
-                    ? "border-primary bg-primary/5"
-                    : "border-border bg-card"
+                key={p.id}
+                className={`flex gap-6 p-6 rounded-2xl border-2 transition-colors ${
+                  granted ? "border-primary bg-primary/5" : "border-border bg-card"
                 }`}
               >
-                <div className="flex items-start gap-4">
-                  {/* Toggle */}
-                  <div className="flex flex-col items-center gap-1 pt-1 flex-shrink-0">
-                    <Switch
-                      checked={isGranted}
-                      onCheckedChange={(checked) =>
-                        handleToggle(purpose, checked)
-                      }
-                      aria-label={purposeDict.label}
-                      className="scale-125"
-                    />
-                  </div>
-
-                  {/* Text content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-lg font-semibold text-foreground">
-                        {purposeDict.label}
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h2 className="text-xl font-bold text-foreground">{purposeDict.label}</h2>
+                    {p.required && (
+                      <span className="px-2.5 py-1 rounded-full bg-destructive/10 text-destructive text-xs font-bold uppercase tracking-wider">
+                        {dict.requiredLabel}
                       </span>
-                      {isRequired && (
-                        <Badge variant="secondary" className="text-xs font-medium">
-                          {dict.consent.requiredLabel}
-                        </Badge>
-                      )}
-                      {isGranted && (
-                        <Badge className="text-xs font-medium bg-primary text-primary-foreground">
-                          ✓{" "}
-                          {language === "hi"
-                            ? "सहमत"
-                            : language === "ta"
-                              ? "ஏற்கிறேன்"
-                              : "Agreed"}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-base text-muted-foreground leading-relaxed">
-                      {purposeDict.description}
-                    </p>
+                    )}
                   </div>
+                  <p className="text-muted-foreground text-lg mb-4">{purposeDict.description}</p>
 
-                  {/* Audio button */}
                   <button
-                    onClick={() =>
-                      handlePlayDescription(purposeDict.description)
-                    }
-                    className="kiosk-touch flex items-center justify-center p-3 rounded-xl bg-secondary hover:bg-muted transition-colors flex-shrink-0"
-                    aria-label={`Read aloud: ${purposeDict.label}`}
+                    onClick={() => playAudio(purposeDict.description)}
+                    className="kiosk-touch flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary hover:bg-muted text-foreground transition-colors"
+                    aria-label={`Listen to ${purposeDict.label}`}
                   >
-                    <Volume2 className="w-6 h-6 text-primary" />
+                    <Volume2 className="w-5 h-5" />
+                    <span className="font-medium text-sm">Listen</span>
                   </button>
+                </div>
+
+                <div className="flex flex-col items-center justify-center gap-3 border-l border-border pl-6">
+                  <Switch
+                    checked={granted}
+                    onCheckedChange={(checked) => setConsent(p.id, checked)}
+                    className="scale-150 data-[state=checked]:bg-primary"
+                    aria-label={`Toggle consent for ${purposeDict.label}`}
+                  />
+                  <span
+                    className={`text-sm font-bold ${
+                      granted ? "text-primary" : "text-muted-foreground"
+                    }`}
+                  >
+                    {granted ? "Agreed" : "Not agreed"}
+                  </span>
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Continue button */}
-        <button
-          onClick={handleContinue}
-          disabled={!requiredGranted}
-          className="kiosk-touch w-full px-8 py-5 rounded-2xl bg-primary text-primary-foreground text-xl font-bold shadow-lg transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed mt-2"
-          aria-disabled={!requiredGranted}
-        >
-          {dict.consent.continueButton}
-        </button>
-
-        {!requiredGranted && (
-          <p className="text-center text-base text-muted-foreground -mt-2">
-            {language === "hi"
-              ? "आगे बढ़ने के लिए पहले दो विकल्पों को चालू करें।"
-              : language === "ta"
-                ? "தொடர முதல் இரண்டு விருப்பங்களை இயக்கவும்."
-                : "Please turn on the first two options to continue."}
-          </p>
-        )}
+        <div className="pt-8 flex justify-center">
+          <button
+            onClick={nextStep}
+            disabled={!allRequiredGranted}
+            className="kiosk-touch min-w-[280px] px-8 py-5 rounded-2xl bg-primary text-primary-foreground text-xl font-bold shadow-lg transition-transform active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100 disabled:pointer-events-none"
+          >
+            {dict.continueButton}
+          </button>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }
