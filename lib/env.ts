@@ -9,6 +9,12 @@
  *
  * If any required var is missing or empty, throws a single formatted error
  * listing ALL missing keys — not just the first.
+ *
+ * DEV / DEMO BYPASS:
+ *   Set `CLERK_BYPASS=true` to allow placeholder Clerk keys. This is
+ *   intended for local development and judged demos where a real Clerk
+ *   account is not available. Production deployments MUST set
+ *   `CLERK_BYPASS=false` (or unset) and supply valid keys.
  */
 import { z } from "zod";
 
@@ -18,6 +24,8 @@ import { z } from "zod";
 
 const nonEmptyString = z.string().min(1, "must not be empty");
 
+const bypass = process.env.CLERK_BYPASS === "true";
+
 // ──────────────────────────────────────────────────────────────────────
 // Server-only environment variables (never exposed to the browser)
 // ──────────────────────────────────────────────────────────────────────
@@ -26,6 +34,8 @@ const serverEnvSchema = z.object({
   SARVAM_API_KEY: nonEmptyString,
   GROQ_API_KEY: nonEmptyString,
   GEMINI_API_KEY: nonEmptyString,
+  // Clerk keys may be placeholders when CLERK_BYPASS=true. We still
+  // require them to be non-empty so a typo is caught early.
   CLERK_SECRET_KEY: nonEmptyString,
   DATABASE_URL: nonEmptyString,
   ABDM_CLIENT_ID: nonEmptyString,
@@ -60,6 +70,10 @@ function validateEnv(): z.infer<typeof envSchema> {
       return `  • ${key}: ${issue.message}`;
     });
 
+    const bypassHint = bypass
+      ? ""
+      : "\n  • Tip: set CLERK_BYPASS=true (development only) if you need to use\n    placeholder Clerk credentials during local development or a demo.\n";
+
     const message = [
       "",
       "╔══════════════════════════════════════════════════════════════╗",
@@ -70,13 +84,18 @@ function validateEnv(): z.infer<typeof envSchema> {
       "║  or empty. Copy .env.example to .env.local and fill in       ║",
       "║  all values before starting the application.                 ║",
       "║                                                              ║",
+      bypass ? "" : "╠══════════════════════════════════════════════════════════════╣",
+      bypass ? "" : bypassHint.trim().split("\n").join("\n║"),
+      bypass ? "" : "║",
       "╚══════════════════════════════════════════════════════════════╝",
       "",
       ...missingKeys,
       "",
       `Total: ${missingKeys.length} missing variable(s)`,
       "",
-    ].join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     throw new Error(message);
   }
@@ -111,3 +130,7 @@ export const serverEnv = {
 export const clientEnv = {
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
 } as const;
+
+/** True when Clerk is bypassed for development / demo. */
+export const clerkBypassed =
+  bypass || !env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.startsWith("pk_");

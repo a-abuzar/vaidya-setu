@@ -5,7 +5,13 @@ import { Mic, Square } from "lucide-react";
 import { rpcClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 
-export function HoldToSpeak({ onTranscript }: { onTranscript: (text: string) => void }) {
+export function HoldToSpeak({
+  onTranscript,
+  disabled = false,
+}: {
+  onTranscript: (text: string) => void;
+  disabled?: boolean;
+}) {
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<BlobPart[]>([]);
@@ -18,7 +24,8 @@ export function HoldToSpeak({ onTranscript }: { onTranscript: (text: string) => 
   const startRecording = useCallback(async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (isRecording) return;
-    
+    if (disabled) return;
+
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       alert("Microphone access is blocked. If you are testing on a mobile device, you must use HTTPS (e.g., via ngrok) or localhost. The browser blocks microphones on plain HTTP network IPs.");
       return;
@@ -66,7 +73,7 @@ export function HoldToSpeak({ onTranscript }: { onTranscript: (text: string) => 
       console.error("Failed to start recording:", err);
       alert("Microphone permission denied or hardware unavailable.");
     }
-  }, [isRecording]);
+  }, [isRecording, disabled]);
 
   const stopRecording = useCallback(async (e?: React.SyntheticEvent) => {
     if (e) e.preventDefault();
@@ -155,6 +162,7 @@ export function HoldToSpeak({ onTranscript }: { onTranscript: (text: string) => 
         onPointerLeave={stopRecording}
         onPointerCancel={stopRecording}
         onContextMenu={(e) => e.preventDefault()}
+        disabled={disabled}
       >
         {isRecording ? (
           <div className="flex flex-col items-center gap-2">

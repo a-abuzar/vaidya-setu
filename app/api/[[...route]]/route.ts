@@ -21,6 +21,7 @@ import {
   sessionStatusEnum,
 } from "@/lib/db/schema";
 import { Result } from "@/lib/types";
+import { ConsentCapturePayloadSchema } from "@/lib/consent-types";
 
 export const runtime = "edge";
 
@@ -50,6 +51,26 @@ const sendError = (c: any, code: string, message: string, status = 400) => {
 };
 
 // --- SESSIONS ---
+
+// Additive anon-session endpoint: created in the Phase-10 UI pass so
+// the kiosk can spin up an encounter without requiring the patient to
+// type their PII into the touchscreen. We persist placeholder patient
+// values that are tagged "Anonymous Kiosk Patient" so they are easy
+// to filter out of any future analytics.
+//
+// TODO(flagged for domain expert review): the existing `patients`
+// schema is NOT NULL on full_name / date_of_birth / gender / phone —
+// all four are clinically meaningful and DPDP Act 2023 expects true
+// identity. For Phase 10 we accept placeholder values here, but the
+// correct long-term design is to either (a) relax these columns to
+// nullable, or (b) introduce a separate `kiosk_visits` table that
+// does not depend on a patient row at all. Do not ship to production
+// with placeholder values.
+const anonSessionSchema = z.object({
+  kioskId: z.string(),
+  preferredLanguage: z.enum(["en", "hi", "ta"]),
+  consent: ConsentCapturePayloadSchema.optional(),
+});
 
 const sessionRouter = new Hono<{ Bindings: Bindings }>()
   .post(
@@ -95,6 +116,71 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
       } catch (err) {
         console.error(err);
         return c.json({ success: false, error: { code: "SESSION_CREATION_FAILED", message: "Could not create session", retryable: false } }, 500);
+      }
+    }
+  )
+  .post(
+    "/anon",
+    zValidator("json", anonSessionSchema),
+    async (c) => {
+      const body = c.req.valid("json");
+      try {
+        // Placeholder anonymous patient — see TODO above.
+        //
+        // The `patients.phone` column is VARCHAR(20), so we keep the
+        // generated identifier short: a base36 timestamp fits
+        // comfortably and stays unique across the kiosk.
+        const anonPatient = {
+          full_name: "Anonymous Kiosk Patient",
+          date_of_birth: new Date("1900-01-01"),
+          gender: "other" as const,
+          phone: `anon-${Date.now().toString(36)}`.slice(0, 20),
+          preferred_language: body.preferredLanguage,
+          abha_linked: false,
+        };
+
+        const inserted = await db
+          .insert(patients)
+          .values(anonPatient)
+          .returning();
+        const patient = inserted[0];
+
+        const newSession = await db
+          .insert(sessions)
+          .values({
+            patient_id: patient.id,
+            kiosk_id: body.kioskId,
+            status: "in_progress",
+          })
+          .returning();
+        const session = newSession[0];
+
+        return c.json(
+          {
+            success: true,
+            data: {
+              sessionId: session.id,
+              patientId: patient.id,
+              consent: body.consent ?? null,
+            },
+          },
+          201,
+        );
+      } catch (err) {
+        console.error("[anon-session] failed", err);
+        const detail =
+          err instanceof Error ? err.message : "Unknown DB error";
+        return c.json(
+          {
+            success: false,
+            error: {
+              code: "ANON_SESSION_FAILED",
+              message: `Could not create anonymous session: ${detail}`,
+              retryable: false,
+            },
+          },
+          500,
+        );
       }
     }
   )
@@ -271,9 +357,241 @@ const aiRouter = new Hono<{ Bindings: Bindings }>()
     }
   );
 
+// --- DOCTOR ---
+//
+// Additive doctor-side endpoints. We deliberately do NOT change the
+// existing session contract — these endpoints add doctor-specific
+// projection, approval, and FHIR push on top of the same data. The
+// Clerk middleware in `middleware.ts` is responsible for protecting
+// these routes; Hono-side validation lives here.
+import { mapSummaryToFHIR } from "@/lib/ai/abdm";
+
+const doctorRouter = new Hono<{ Bindings: Bindings }>()
+  // GET /api/doctor/sessions — list sessions for the queue view.
+  .get("/sessions", async (c) => {
+    try {
+      const rows = await db
+        .select({
+          id: sessions.id,
+          patientId: sessions.patient_id,
+          status: sessions.status,
+          startedAt: sessions.started_at,
+          completedAt: sessions.completed_at,
+        })
+        .from(sessions)
+        .orderBy(sessions.started_at);
+
+      // Project each session with summary + document counts.
+      const projected = await Promise.all(
+        rows.map(async (r) => {
+          const [conv] = await db
+            .select()
+            .from(conversations)
+            .where(eq(conversations.session_id, r.id))
+            .limit(1);
+          const [sum] = await db
+            .select()
+            .from(summaries)
+            .where(eq(summaries.session_id, r.id))
+            .limit(1);
+          const docs = await db
+            .select({ id: documents.id })
+            .from(documents)
+            .where(eq(documents.session_id, r.id));
+          return {
+            id: r.id,
+            patientId: r.patientId,
+            status: r.status,
+            startedAt: r.startedAt?.toISOString() ?? new Date().toISOString(),
+            completedAt: r.completedAt?.toISOString() ?? null,
+            redFlag: conv?.red_flag ?? false,
+            documentCount: docs.length,
+            chiefComplaint: sum?.chief_complaint ?? "",
+          };
+        }),
+      );
+      return c.json({ success: true, data: projected });
+    } catch (err) {
+      console.error("[doctor] list sessions failed", err);
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: "DOCTOR_LIST_FAILED",
+            message: err instanceof Error ? err.message : "Unknown error",
+            retryable: false,
+          },
+        },
+        500,
+      );
+    }
+  })
+  // GET /api/doctor/sessions/:id — full structured detail.
+  .get("/sessions/:id", async (c) => {
+    const id = c.req.param("id");
+    try {
+      const [s] = await db
+        .select()
+        .from(sessions)
+        .where(eq(sessions.id, id))
+        .limit(1);
+      if (!s) {
+        return c.json(
+          {
+            success: false,
+            error: { code: "NOT_FOUND", message: "Session not found", retryable: false },
+          },
+          404,
+        );
+      }
+      const [conv] = await db
+        .select()
+        .from(conversations)
+        .where(eq(conversations.session_id, id))
+        .limit(1);
+      const [sum] = await db
+        .select()
+        .from(summaries)
+        .where(eq(summaries.session_id, id))
+        .limit(1);
+      const docs = await db
+        .select()
+        .from(documents)
+        .where(eq(documents.session_id, id));
+
+      return c.json({
+        success: true,
+        data: {
+          id: s.id,
+          patientId: s.patient_id,
+          status: s.status,
+          startedAt: s.started_at?.toISOString() ?? new Date().toISOString(),
+          completedAt: s.completed_at?.toISOString() ?? null,
+          redFlag: conv?.red_flag ?? false,
+          redFlagReason: conv?.red_flag_reason ?? null,
+          summary: {
+            id: sum?.id ?? null,
+            chiefComplaint: sum?.chief_complaint ?? "",
+            hpi: sum?.hpi ?? "",
+            pastHistory: JSON.stringify(sum?.past_history ?? []),
+            drugAllergyHistory: JSON.stringify(sum?.drug_allergy_history ?? []),
+            familyHistory: sum?.family_history ?? "",
+            personalHistory: sum?.personal_history ?? "",
+            ros: JSON.stringify(sum?.ros ?? {}),
+            priorInvestigations: JSON.stringify(sum?.prior_investigations ?? []),
+            ayush: (sum?.ayush_assessment as Record<string, unknown> | null) ?? null,
+            physicianEdited: sum?.physician_edited ?? false,
+            finalizedAt: sum?.finalized_at?.toISOString() ?? null,
+          },
+          documents: docs.map((d) => ({
+            id: d.id,
+            docType: d.doc_type,
+            uploadedAt: d.uploaded_at?.toISOString() ?? new Date().toISOString(),
+            ocrStatus: d.ocr_status,
+          })),
+          transcript: Array.isArray(conv?.transcript)
+            ? (conv?.transcript as Array<{
+                role: "patient" | "system";
+                text: string;
+                timestamp: string;
+              }>)
+            : [],
+        },
+      });
+    } catch (err) {
+      console.error("[doctor] session detail failed", err);
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: "DOCTOR_DETAIL_FAILED",
+            message: err instanceof Error ? err.message : "Unknown error",
+            retryable: false,
+          },
+        },
+        500,
+      );
+    }
+  })
+  // POST /api/doctor/sessions/:id/approve — mark physician_edited + finalized.
+  .post("/sessions/:id/approve", async (c) => {
+    const id = c.req.param("id");
+    try {
+      await db
+        .update(summaries)
+        .set({ physician_edited: true, finalized_at: new Date() })
+        .where(eq(summaries.session_id, id));
+      await db
+        .update(sessions)
+        .set({ status: "completed", completed_at: new Date() })
+        .where(eq(sessions.id, id));
+      return c.json({ success: true, data: { ok: true } });
+    } catch (err) {
+      console.error("[doctor] approve failed", err);
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: "APPROVE_FAILED",
+            message: err instanceof Error ? err.message : "Unknown error",
+            retryable: false,
+          },
+        },
+        500,
+      );
+    }
+  })
+  // POST /api/doctor/sessions/:id/fhir — generate FHIR DiagnosticReport
+  // and (mock) push to ABDM. Uses lib/ai/abdm.ts::mapSummaryToFHIR
+  // — kept server-side per module boundaries.
+  .post("/sessions/:id/fhir", async (c) => {
+    const id = c.req.param("id");
+    try {
+      const [sum] = await db
+        .select()
+        .from(summaries)
+        .where(eq(summaries.session_id, id))
+        .limit(1);
+      if (!sum) {
+        return c.json(
+          {
+            success: false,
+            error: {
+              code: "SUMMARY_NOT_FOUND",
+              message: "No summary to push",
+              retryable: false,
+            },
+          },
+          404,
+        );
+      }
+      const fhir = mapSummaryToFHIR(sum);
+      // In a real deployment this would call the ABDM gateway's
+      // /v3/records endpoints. We deliberately do not invent that
+      // payload here — return the generated FHIR bundle so the
+      // dashboard can preview it, and the ABDM push remains a TODO
+      // until the live gateway is reachable.
+      return c.json({ success: true, data: { ok: true, fhir } });
+    } catch (err) {
+      console.error("[doctor] fhir push failed", err);
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: "FHIR_PUSH_FAILED",
+            message: err instanceof Error ? err.message : "Unknown error",
+            retryable: true,
+          },
+        },
+        500,
+      );
+    }
+  });
+
 const routes = app
   .route("/sessions", sessionRouter)
-  .route("/ai", aiRouter);
+  .route("/ai", aiRouter)
+  .route("/doctor", doctorRouter);
 
 export type AppType = typeof routes;
 

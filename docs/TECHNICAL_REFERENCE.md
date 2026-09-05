@@ -617,21 +617,61 @@ app/
 - Renders `<Toaster position="top-center" richColors />` from Sonner
 - Uses `LayoutProps<"/">` type (from Next.js types)
 
-### Kiosk Page (`app/(kiosk)/page.tsx`)
+### Patient flow (kiosk screens)
 
-This is the main patient-facing page. It has two states:
+The patient journey is six steps; each step renders inside the shared
+`KioskShell` (sticky top bar with Back/Home/Help, persistent
+`StepIndicator`, persistent bottom `AccessibilityBar`):
 
-1. **Welcome screen**: Language selection (Hindi/English/Tamil) → "Start Consultation" button
-2. **Consultation UI**: Split-panel layout
-   - **Left**: Chat-style conversation transcript (system messages + patient messages)
-   - **Right**: Current question + HoldToSpeak button + red-flag alert banner
+1. **Welcome / Language select** (`app/(kiosk)/page.tsx`) — three
+   large language cards (Hindi / English / Tamil) with native-script
+   preview, audio greeting on selection, and Ministry / ABDM / DPDP
+   trust badges.
 
-**Key behaviors**:
-- Browser TTS for question audio playback (`SpeechSynthesisUtterance`)
-- Online/offline status detection with toast notifications
-- Offline mutation queuing via Zustand store → IndexedDB
-- Auto-scroll conversation on new messages
-- Red-flag detection with visual alert banner
+2. **Consent** (`app/(kiosk)/consent/page.tsx`) — granular toggles
+   for the four `ConsentPurpose` values defined in
+   `docs/MODULE_CONTRACT.md §D`. Each card has its own
+   `Read aloud` button (browser TTS). Required consent purposes are
+   explicitly badged. Decisions persist in
+   `lib/store/consent.ts`; the consent text/language/timestamp
+   snapshot is sent to `/api/sessions/anon` on encounter start.
+
+3. **Identify** (`app/(kiosk)/identify/page.tsx`) — two equally
+   prominent paths (link ABHA / continue without). ABHA linking is
+   honestly flagged as `NOT_IMPLEMENTED` pending the live ABDM gateway
+   and falls back to the anonymous path so patients are never blocked.
+
+4. **Encounter** (`app/(kiosk)/encounter/page.tsx`) — one question
+   at a time. Hold-to-speak capture with live waveform
+   (`components/HoldToSpeak.tsx`) plus touch option buttons. Each
+   patient turn is shown in a caption-confirmation panel
+   ("did we get this right?") so they can correct the system before
+   the answer propagates. Red-flag detection triggers a full-screen
+   destructive interrupt requiring acknowledgement.
+
+5. **Documents** (`app/(kiosk)/documents/page.tsx`) — camera capture
+   (rear-facing preferred), retake/preview/submit cycle, skip-to-summary
+   path. Uploads hit the existing `/api/sessions/:id/documents`
+   multipart endpoint.
+
+6. **Summary** (`app/(kiosk)/summary/page.tsx`) — patient-facing
+   readback with audio playback, "something is wrong" branch back to
+   the encounter, and an explicit two-step confirmation before
+   finalization. A 4-character take-away code and a visual QR-style
+   dot grid are shown after a successful send.
+
+### Doctor dashboard (`app/(doctor)/`)
+
+- `/doctor/dashboard` — list of sessions from `/api/doctor/sessions`
+  with red-flag badges, document counts, and status. Protected by
+  Clerk middleware (`proxy.ts`).
+- `/doctor/session/[id]` — full structured summary, transcript,
+  document timeline, AYUSH dosha visualization
+  (`app/(doctor)/components/DoshaChart.tsx`), and three action buttons:
+  Edit (PATCH `/api/sessions/:id`), Push to FHIR (calls
+  `lib/ai/abdm.ts::mapSummaryToFHIR` server-side via
+  `/api/doctor/sessions/:id/fhir`), Approve (sets
+  `physician_edited = true`, finalizes the session).
 
 ### HoldToSpeak Component (`components/HoldToSpeak.tsx`)
 
@@ -659,7 +699,79 @@ A hold-to-speak button that:
 }
 ```
 
-**Installed components**: `button`, `card`, `progress`, `sonner`
+**Installed primitives**: `button`, `card`, `progress`, `sonner`,
+`badge`, `separator`, `switch` (custom plain-button impl, see note),
+`radio-group`, `field`, `dialog` (custom plain-`role=dialog` impl),
+`tabs`, `toggle`, `tooltip`.
+
+> **Implementation note on Switch / Dialog.** We initially wrapped
+> `@base-ui/react/switch` and `@base-ui/react/dialog`, but their
+> production builds raise form-control validation error #26 when
+> statically prerendered (`<Switch.Root>` requires an enclosing
+> `<label>` and `<Dialog.Root>` portals must be hydrated).
+> The kiosk pages are statically prerendered for speed, so the
+> Switch is now a plain `<button role="switch" aria-checked>`
+> (see `components/ui/switch.tsx`) and the Dialog is a plain
+> `<div role="dialog" aria-modal>` (see
+> `components/ui/modal.tsx`). Both remain fully accessible and
+> keyboard-operable.
+
+### Patient flow (kiosk screens)
+
+The patient journey is six steps; each step renders inside the shared
+`KioskShell` (sticky top bar with Back/Home/Help, persistent
+`StepIndicator`, persistent bottom `AccessibilityBar`):
+
+1. **Welcome / Language select** (`app/(kiosk)/page.tsx`) — three
+   large language cards (Hindi / English / Tamil) with native-script
+   preview, audio greeting on selection, and Ministry / ABDM / DPDP
+   trust badges.
+
+2. **Consent** (`app/(kiosk)/consent/page.tsx`) — granular toggles
+   for the four `ConsentPurpose` values defined in
+   `docs/MODULE_CONTRACT.md §D`. Each card has its own
+   `Read aloud` button (browser TTS). Required consent purposes
+   are explicitly badged. Decisions persist in
+   `lib/store/consent.ts`; the consent text/language/timestamp
+   snapshot is sent to `/api/sessions/anon` on encounter start.
+
+3. **Identify** (`app/(kiosk)/identify/page.tsx`) — two equally
+   prominent paths (link ABHA / continue without). ABHA linking is
+   honestly flagged as `NOT_IMPLEMENTED` pending the live ABDM
+   gateway and falls back to the anonymous path so patients are
+   never blocked.
+
+4. **Encounter** (`app/(kiosk)/encounter/page.tsx`) — one question
+   at a time. Hold-to-speak capture with live waveform
+   (`components/HoldToSpeak.tsx`) plus touch option buttons.
+   Each patient turn is shown in a caption-confirmation panel
+   ("did we get this right?") so they can correct the system
+   before the answer propagates. Red-flag detection triggers a
+   full-screen destructive interrupt requiring acknowledgement.
+
+5. **Documents** (`app/(kiosk)/documents/page.tsx`) — camera
+   capture (rear-facing preferred), retake/preview/submit cycle,
+   skip-to-summary path. Uploads hit the existing
+   `/api/sessions/:id/documents` multipart endpoint.
+
+6. **Summary** (`app/(kiosk)/summary/page.tsx`) — patient-facing
+   readback with audio playback, "something is wrong" branch
+   back to the encounter, and an explicit two-step confirmation
+   before finalization. A 4-character take-away code and a
+   visual QR-style dot grid are shown after a successful send.
+
+### Doctor dashboard (`app/(doctor)/`)
+
+- `/doctor/dashboard` — list of sessions from `/api/doctor/sessions`
+  with red-flag badges, document counts, and status. Protected by
+  Clerk middleware (`proxy.ts`).
+- `/doctor/session/[id]` — full structured summary, transcript,
+  document timeline, AYUSH dosha visualization
+  (`app/(doctor)/components/DoshaChart.tsx`), and three action buttons:
+  Edit (PATCH `/api/sessions/:id`), Push to FHIR (calls
+  `lib/ai/abdm.ts::mapSummaryToFHIR` server-side via
+  `/api/doctor/sessions/:id/fhir`), Approve (sets
+  `physician_edited = true`, finalizes the session).
 
 ---
 
@@ -987,6 +1099,10 @@ Each phase is a prompt block designed for AI-assisted code generation. Validatio
 | HoldToSpeak | `components/HoldToSpeak.tsx` | Audio recording, visualizer, Sarvam → Web Speech fallback |
 | RPC client | `lib/api-client.ts` | Type-safe Hono client |
 | Tests | `lib/ai/abdm.test.ts` | ABDM token + FHIR mapping tests |
+| Patient flow screens | `app/(kiosk)/*` | Welcome / Consent / Identify / Encounter / Documents / Summary (each with KioskShell) |
+| Doctor dashboard | `app/(doctor)/*` | Session queue, per-session review with dosha chart |
+| Anon session endpoint | `/api/sessions/anon` | POST: creates patient placeholder + session + accepts consent payload |
+| Doctor API | `/api/doctor/*` | GET sessions list, GET session detail, POST approve, POST fhir-push |
 
 ### Stubs (Not Implemented — Return `NOT_IMPLEMENTED` Error)
 
@@ -1044,26 +1160,58 @@ app/
   favicon.ico
   (kiosk)/
     layout.tsx                            # Kiosk shell
-    page.tsx                              # Main kiosk page (language + consultation)
-    encounter/
-      page.tsx                            # Voice encounter page
+    page.tsx                              # Step 1 — Welcome / language select
+    consent/page.tsx                      # Step 2 — DPDP consent
+    identify/page.tsx                     # Step 3 — ABHA optional link
+    encounter/page.tsx                    # Step 4 — Voice/touch interview
+    documents/page.tsx                    # Step 5 — Camera capture
+    summary/page.tsx                      # Step 6 — Patient-facing review
+  (doctor)/
+    layout.tsx                            # Clerk auth guard
+    dashboard/page.tsx                    # Session queue
+    session/[id]/page.tsx                 # Per-session review + dosha chart
+    components/
+      DoctorTopBar.tsx
+      DoshaChart.tsx
+  sign-in/
+    page.tsx                              # Clerk hosted sign-in entry
   api/
     [[...route]]/
       route.ts                            # Hono catch-all (sessions, AI)
 
 components/
-  HoldToSpeak.tsx                         # Voice input with visualizer
+  HoldToSpeak.tsx                         # Voice input with visualizer (Sarvam + Web Speech fallback)
+  kiosk/
+    KioskChromeBoot.tsx                   # Mounts accessibility settings on <html>
+    KioskShell.tsx                        # Common wrapper for patient-facing screens
+    KioskTopBar.tsx                       # Back / Home / Help + dialog
+    AccessibilityBar.tsx                  # Persistent text-size, high-contrast, audio toggles
+    StepIndicator.tsx                     # "Step X of Y" progress
+    useSpeech.ts                          # Browser TTS hook
   ui/
-    button.tsx                            # shadcn/ui
+    button.tsx                            # shadcn/ui (base-nova)
     card.tsx                              # shadcn/ui
     progress.tsx                          # shadcn/ui
     sonner.tsx                            # shadcn/ui (toast)
+    badge.tsx                             # Status / count badge
+    separator.tsx                         # Plain <hr> wrapper
+    switch.tsx                            # Plain <button role="switch"> (NOT base-ui)
+    radio-group.tsx                       # base-ui radio-group wrapper
+    field.tsx                             # Label/description form field
+    dialog.tsx                            # base-ui dialog wrapper (currently unused in prerendered pages)
+    tabs.tsx                              # base-ui tabs wrapper
+    tooltip.tsx                           # base-ui tooltip wrapper
+    toggle.tsx                            # base-ui toggle wrapper
+    modal.tsx                             # Plain <div role="dialog"> (used in place of base-ui Dialog)
 
 lib/
   env.ts                                  # Zod env validation
   types.ts                                # Result<T>, domain primitives
   utils.ts                                # cn() class merge
   api-client.ts                           # Hono RPC client
+  consent-types.ts                        # Shared Zod schemas for ConsentPurpose
+  i18n/
+    dict.ts                               # en/hi/ta static dictionaries + t() helper
   db/
     index.ts                              # Drizzle client
     schema.ts                             # All tables + enums + Zod schemas
@@ -1075,7 +1223,9 @@ lib/
     abdm.ts                               # ABDM auth, ABHA (stub), FHIR mapper
     abdm.test.ts                          # Integration tests
   store/
-    session.ts                            # Zustand store + offline queue
+    session.ts                            # Existing: Zustand session store + offline queue
+    kiosk-ui.ts                           # Patient accessibility preferences (text scale, audio, language)
+    consent.ts                            # DPDP consent decisions + validation
 
 docs/
   MODULE_CONTRACT.md                      # Module boundaries & contracts

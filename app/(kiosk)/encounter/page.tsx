@@ -1,0 +1,579 @@
+"use client";
+
+/**
+ * Encounter / conversational history screen.
+ *
+ * One question at a time, shown at large type, with both a
+ * hold-to-speak button and touch options alongside each prompt.
+ * After the patient answers, the transcript is shown in a caption
+ * panel so they can confirm or correct what the system understood
+ * before it propagates.
+ *
+ * Red-flag detection from the triage LLM is rendered as a
+ * full-screen high-contrast interrupt, not a small banner — the
+ * patient must acknowledge that staff has been notified.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  Activity,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { KioskShell } from "@/components/kiosk/KioskShell";
+import { useKioskUi } from "@/lib/store/kiosk-ui";
+import { useSessionStore, type TranscriptEntry } from "@/lib/store/session";
+import { useConsentStore } from "@/lib/store/consent";
+import { useSpeech } from "@/components/kiosk/useSpeech";
+import { HoldToSpeak } from "@/components/HoldToSpeak";
+import { rpcClient } from "@/lib/api-client";
+import { t } from "@/lib/i18n/dict";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+interface TouchOption {
+  id: string;
+  label: string;
+}
+
+interface TriageData {
+  redFlag: boolean;
+  redFlagReason: string | null;
+  socratesFieldsMissing: string[];
+  nextQuestion: string | null;
+}
+
+const FALLBACK_TOUCH_OPTIONS: TouchOption[] = [
+  { id: "yes", label: "हाँ / Yes" },
+  { id: "no", label: "नहीं / No" },
+  { id: "pain", label: "दर्द / Pain" },
+  { id: "fever", label: "बुखार / Fever" },
+  { id: "cough", label: "खांसी / Cough" },
+  { id: "other", label: "अन्य / Other" },
+];
+
+const INITIAL_QUESTION: Record<"hi" | "en" | "ta", string> = {
+  hi: "नमस्ते। आज आप कैसा महसूस कर रहे हैं?",
+  en: "Hello. How are you feeling today?",
+  ta: "வணக்கம். இன்று நீங்கள் எப்படி உணர்கிறீர்கள்?",
+};
+
+type SessionBootstrap =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "ready"; sessionId: string }
+  | { status: "error"; message: string };
+
+export default function EncounterPage(): React.ReactElement {
+  const router = useRouter();
+  const language = useKioskUi((s) => s.language);
+  const { speak, cancel: cancelSpeech } = useSpeech();
+
+  const {
+    sessionId,
+    transcript,
+    currentQuestion,
+    isProcessing,
+    redFlagDetected,
+    redFlagReason,
+    ayushModeEnabled,
+    addTranscriptEntry,
+    setCurrentQuestion,
+    setProcessing,
+    setRedFlag,
+    queueOfflineMutation,
+    startSession,
+  } = useSessionStore();
+
+  const [pendingUtterance, setPendingUtterance] = useState<string | null>(null);
+  const [touchOptions, setTouchOptions] = useState<TouchOption[]>(FALLBACK_TOUCH_OPTIONS);
+  const [bootstrap, setBootstrap] = useState<SessionBootstrap>({ status: "idle" });
+  const initLockRef = useRef(false);
+
+  useEffect(() => {
+    if (initLockRef.current) return;
+    if (sessionId !== null) {
+      setBootstrap({ status: "ready", sessionId });
+      return;
+    }
+    initLockRef.current = true;
+    setBootstrap({ status: "loading" });
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/sessions/anon", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kioskId: "kiosk-001",
+            preferredLanguage: language,
+            consent: useConsentStore.getState(),
+          }),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`HTTP ${res.status}: ${text}`);
+        }
+        const payload = (await res.json()) as
+          | { success: true; data: { sessionId: string; patientId: string } }
+          | { success: false; error: { code: string; message: string } };
+        if (!payload.success) {
+          throw new Error(payload.error.message);
+        }
+        startSession(payload.data.sessionId, payload.data.patientId, language);
+        setBootstrap({ status: "ready", sessionId: payload.data.sessionId });
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : "Could not start session.";
+        console.error("[encounter] session bootstrap failed", error);
+        setBootstrap({ status: "error", message });
+      }
+    })();
+  }, [sessionId, language, startSession]);
+
+  useEffect(() => {
+    if (bootstrap.status !== "ready") return;
+    if (currentQuestion !== null) return;
+    const firstQ = INITIAL_QUESTION[language];
+    setCurrentQuestion(firstQ);
+    addTranscriptEntry({
+      role: "system",
+      text: firstQ,
+      lang: language,
+      timestamp: new Date().toISOString(),
+    });
+    speak(firstQ);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bootstrap.status, language]);
+
+  useEffect(() => {
+    if (!currentQuestion) return;
+    speak(currentQuestion);
+    return () => cancelSpeech();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestion]);
+
+  const sendTurn = useCallback(
+    async (entry: TranscriptEntry): Promise<void> => {
+      setProcessing(true);
+      try {
+        const history = [...transcript, entry]
+          .map((m) => `${m.role.toUpperCase()}: ${m.text}`)
+          .join("\n");
+
+        const triageRes = await rpcClient.api.ai.triage.$post({
+          json: { transcript: history, language },
+        });
+
+        if (!triageRes.ok) {
+          throw new Error(`Triage HTTP ${triageRes.status}`);
+        }
+
+        const triageJson = (await triageRes.json()) as
+          | { success: true; data: TriageData }
+          | { success: false; error: { code: string; message: string } };
+        if (!triageJson.success) {
+          throw new Error(triageJson.error.message);
+        }
+        const triage = triageJson.data;
+
+        if (triage.redFlag) {
+          setRedFlag(true, triage.redFlagReason ?? "Emergency symptom detected");
+          toast.error(triage.redFlagReason ?? "Red flag detected");
+          return;
+        }
+
+        const nextQ = triage.nextQuestion;
+        if (nextQ) {
+          setCurrentQuestion(nextQ);
+          addTranscriptEntry({
+            role: "system",
+            text: nextQ,
+            lang: language,
+            timestamp: new Date().toISOString(),
+          });
+        }
+        setTouchOptions(FALLBACK_TOUCH_OPTIONS);
+
+        const sid = useSessionStore.getState().sessionId;
+        if (sid) {
+          const payload = { transcript: [...transcript, entry] };
+          if (typeof navigator !== "undefined" && !navigator.onLine) {
+            await queueOfflineMutation({
+              sessionId: sid,
+              type: "PATCH_TRANSCRIPT",
+              payload,
+            });
+          } else {
+            try {
+              const patchRes = await rpcClient.api.sessions[":id"].$patch({
+                param: { id: sid },
+                json: payload,
+              });
+              if (!patchRes.ok) throw new Error("DB sync failed");
+            } catch (error: unknown) {
+              console.warn("[encounter] transcript sync failed, queueing offline", error);
+              await queueOfflineMutation({
+                sessionId: sid,
+                type: "PATCH_TRANSCRIPT",
+                payload,
+              });
+            }
+          }
+        }
+
+        if (!nextQ) {
+          toast.success(t(language, "encounter.finish"));
+          router.push("/documents");
+        }
+      } catch (error: unknown) {
+        console.error("[encounter] triage failed", error);
+        toast.error(t(language, "error.network"));
+      } finally {
+        setProcessing(false);
+      }
+    },
+    [
+      transcript,
+      language,
+      addTranscriptEntry,
+      setCurrentQuestion,
+      setProcessing,
+      setRedFlag,
+      queueOfflineMutation,
+      router,
+    ],
+  );
+
+  const lastSystemEntry = useMemo(
+    () => [...transcript].reverse().find((e) => e.role === "system"),
+    [transcript],
+  );
+
+  const onHoldTranscript = (text: string): void => {
+    if (!text.trim()) {
+      toast.error(t(language, "encounter.audioFailed"));
+      return;
+    }
+    setPendingUtterance(text.trim());
+  };
+
+  const onPickOption = (option: TouchOption): void => {
+    setPendingUtterance(option.label);
+  };
+
+  const onConfirmUtterance = (): void => {
+    if (!pendingUtterance) return;
+    const entry: TranscriptEntry = {
+      role: "patient",
+      text: pendingUtterance,
+      lang: language,
+      timestamp: new Date().toISOString(),
+    };
+    addTranscriptEntry(entry);
+    setPendingUtterance(null);
+    void sendTurn(entry);
+  };
+
+  const onDismissUtterance = (): void => {
+    setPendingUtterance(null);
+    if (currentQuestion) speak(currentQuestion);
+  };
+
+  // ---------- Early returns AFTER all hooks -----------------------
+  if (redFlagDetected) {
+    return (
+      <RedFlagInterrupt
+        reason={redFlagReason}
+        onAcknowledge={() => {
+          toast.success(t(language, "redflag.notify"));
+        }}
+        onContinueAnyway={() => setRedFlag(false, null)}
+      />
+    );
+  }
+
+  if (bootstrap.status === "loading") {
+    return (
+      <KioskShell step="encounter">
+        <StatusPlaceholder
+          icon={<Loader2 className="size-12 animate-spin" />}
+          title={t(language, "encounter.processing")}
+        />
+      </KioskShell>
+    );
+  }
+  if (bootstrap.status === "error") {
+    return (
+      <KioskShell step="encounter">
+        <StatusPlaceholder
+          variant="error"
+          icon={<AlertTriangle className="size-12" />}
+          title={t(language, "error.generic")}
+          description={bootstrap.message}
+          actionLabel={t(language, "nav.retry")}
+          onAction={() => {
+            initLockRef.current = false;
+            setBootstrap({ status: "idle" });
+          }}
+        />
+      </KioskShell>
+    );
+  }
+
+  return (
+    <KioskShell step="encounter">
+      <header className="flex flex-col gap-3 text-center sm:text-left">
+        <div className="flex flex-wrap items-center gap-2 self-center sm:self-start">
+          <Badge variant="secondary" className="px-3 py-1 text-sm">
+            <Activity className="mr-1 size-3" aria-hidden="true" />
+            {ayushModeEnabled ? "AYUSH mode" : "Standard mode"}
+          </Badge>
+          {sessionId ? (
+            <Badge variant="outline" className="px-3 py-1 text-sm">
+              Session {sessionId.slice(0, 8)}
+            </Badge>
+          ) : null}
+        </div>
+        <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+          {t(language, "encounter.heading")}
+        </h1>
+        <p className="text-lg text-muted-foreground sm:text-xl">
+          {t(language, "encounter.subheading")}
+        </p>
+      </header>
+
+      <section
+        aria-live="polite"
+        className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card p-8 text-center shadow-sm"
+      >
+        <h2 className="max-w-3xl text-3xl font-extrabold leading-snug sm:text-4xl">
+          {currentQuestion ?? t(language, "encounter.placeholder")}
+        </h2>
+        {isProcessing ? (
+          <div className="flex items-center gap-2 text-base font-semibold text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            {t(language, "encounter.processing")}
+          </div>
+        ) : null}
+      </section>
+
+      {pendingUtterance !== null ? (
+        <section
+          aria-live="polite"
+          className="flex flex-col gap-4 rounded-3xl border-2 border-primary/40 bg-primary/5 p-6 shadow-sm"
+        >
+          <h3 className="text-xl font-bold sm:text-2xl">
+            {t(language, "encounter.correctTitle")}
+          </h3>
+          <p className="rounded-2xl bg-background p-4 text-xl font-semibold leading-relaxed sm:text-2xl">
+            “{pendingUtterance}”
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="min-h-14 rounded-2xl px-6 text-lg"
+              onClick={onDismissUtterance}
+            >
+              {t(language, "encounter.wrong")}
+            </Button>
+            <Button
+              type="button"
+              size="lg"
+              className="min-h-14 rounded-2xl px-8 text-lg font-bold shadow-md"
+              onClick={onConfirmUtterance}
+              disabled={isProcessing}
+            >
+              <CheckCircle2 className="mr-2 size-5" aria-hidden="true" />
+              {t(language, "encounter.correct.yes")}
+            </Button>
+          </div>
+        </section>
+      ) : (
+        <section className="flex flex-col items-center gap-6 rounded-3xl border border-border bg-card p-6 shadow-sm">
+          <HoldToSpeak
+            onTranscript={onHoldTranscript}
+            disabled={isProcessing}
+          />
+          <Separator />
+          <div className="w-full">
+            <p className="mb-3 text-base font-bold uppercase tracking-wider text-muted-foreground">
+              {t(language, "encounter.optionsTitle")}
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {touchOptions.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => onPickOption(opt)}
+                  className="min-h-16 rounded-2xl border-2 border-border bg-background px-4 py-3 text-lg font-semibold transition-colors hover:border-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/50"
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className="rounded-3xl border border-border bg-card/50 p-5 text-sm text-muted-foreground">
+        <p className="mb-2 text-base font-bold uppercase tracking-wider text-foreground">
+          {t(language, "encounter.lastHeard")}
+        </p>
+        {lastSystemEntry ? (
+          <p className="text-base leading-relaxed">
+            <span className="font-bold text-foreground">Dr: </span>
+            {lastSystemEntry.text}
+          </p>
+        ) : (
+          <p>{t(language, "encounter.placeholder")}</p>
+        )}
+        {transcript.length > 0 ? (
+          <ul className="mt-3 flex flex-col gap-2">
+            {[...transcript]
+              .slice(-3)
+              .reverse()
+              .map((e, i) =>
+                e.role === "patient" ? (
+                  <li
+                    key={i}
+                    className="rounded-2xl bg-secondary px-4 py-2 text-base font-medium text-secondary-foreground"
+                  >
+                    {e.text}
+                  </li>
+                ) : null,
+              )}
+          </ul>
+        ) : null}
+      </section>
+    </KioskShell>
+  );
+}
+
+function RedFlagInterrupt({
+  reason,
+  onAcknowledge,
+  onContinueAnyway,
+}: {
+  reason: string | null;
+  onAcknowledge: () => void;
+  onContinueAnyway: () => void;
+}): React.ReactElement {
+  const language = useKioskUi((s) => s.language);
+  const { speak } = useSpeech();
+
+  useEffect(() => {
+    speak(t(language, "redflag.body"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <main className="fixed inset-0 z-50 flex items-center justify-center bg-destructive p-6">
+      <div className="max-w-3xl rounded-3xl bg-card p-8 shadow-2xl sm:p-12">
+        <div className="mb-6 flex items-center gap-4">
+          <span
+            aria-hidden="true"
+            className="flex size-16 items-center justify-center rounded-2xl bg-destructive text-destructive-foreground sm:size-20"
+          >
+            <AlertTriangle className="size-10 sm:size-12" />
+          </span>
+          <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-destructive sm:text-4xl">
+            {t(language, "redflag.heading")}
+          </h1>
+        </div>
+        {reason ? (
+          <div className="mb-6 rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
+            <p className="text-base font-bold uppercase tracking-wider text-destructive">
+              {t(language, "redflag.reason")}
+            </p>
+            <p className="mt-1 text-xl font-semibold leading-snug text-foreground sm:text-2xl">
+              {reason}
+            </p>
+          </div>
+        ) : null}
+        <p className="text-xl leading-relaxed text-foreground sm:text-2xl">
+          {t(language, "redflag.body")}
+        </p>
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="min-h-14 rounded-2xl px-6 text-base font-semibold"
+            onClick={onContinueAnyway}
+          >
+            {t(language, "redflag.continueAnyway")}
+          </Button>
+          <Button
+            type="button"
+            size="lg"
+            className="min-h-16 rounded-2xl px-8 text-xl font-bold shadow-lg"
+            onClick={onAcknowledge}
+          >
+            <CheckCircle2 className="mr-2 size-6" aria-hidden="true" />
+            {t(language, "redflag.confirm")}
+          </Button>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function StatusPlaceholder({
+  icon,
+  title,
+  description,
+  variant = "neutral",
+  actionLabel,
+  onAction,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description?: string;
+  variant?: "neutral" | "error";
+  actionLabel?: string;
+  onAction?: () => void;
+}): React.ReactElement {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center gap-4 rounded-3xl border-2 p-12 text-center",
+        variant === "error"
+          ? "border-destructive bg-destructive/5"
+          : "border-border bg-card",
+      )}
+    >
+      <div
+        className={cn(
+          "flex size-20 items-center justify-center rounded-2xl",
+          variant === "error" ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground",
+        )}
+        aria-hidden="true"
+      >
+        {icon}
+      </div>
+      <h2 className="text-2xl font-bold sm:text-3xl">{title}</h2>
+      {description ? (
+        <p className="max-w-xl text-base text-muted-foreground sm:text-lg">
+          {description}
+        </p>
+      ) : null}
+      {actionLabel && onAction ? (
+        <Button
+          type="button"
+          size="lg"
+          className="min-h-14 rounded-2xl px-6 text-lg"
+          onClick={onAction}
+        >
+          {actionLabel}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
