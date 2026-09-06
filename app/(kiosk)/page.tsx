@@ -83,44 +83,44 @@ export default function WelcomePage(): React.ReactElement {
   };
 
   return (
-    <main className="min-h-screen bg-background pb-40">
-      <header className="border-b border-border bg-card/50 py-6">
-        <div className="mx-auto flex max-w-6xl items-center gap-4 px-6">
+    <main className="min-h-screen bg-background pb-20">
+      <header className="border-b border-border bg-card/50 py-4">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-6">
           <div
             aria-hidden="true"
-            className="flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md"
+            className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm"
           >
-            <Sparkles className="size-7" />
+            <Sparkles className="size-5" />
           </div>
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {t(language, "app.ministry")}
             </p>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
               {t(language, "app.title")}
             </h1>
-            <p className="text-base text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {t(language, "app.subtitle")}
             </p>
           </div>
         </div>
       </header>
 
-      <section className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <span className="inline-flex items-center gap-2 rounded-full bg-secondary px-5 py-2 text-sm font-semibold uppercase tracking-wider text-secondary-foreground">
-            <Languages className="size-4" aria-hidden="true" />
+      <section className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-6">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-secondary-foreground">
+            <Languages className="size-3" aria-hidden="true" />
             {t(language, "welcome.chooseLanguage")}
           </span>
-          <h2 className="max-w-3xl text-balance text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+          <h2 className="max-w-3xl text-balance text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
             {t(language, "welcome.heading")}
           </h2>
-          <p className="max-w-2xl text-base text-muted-foreground sm:text-lg">
+          <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
             {t(language, "welcome.subheading")}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3" role="radiogroup" aria-label={t(language, "welcome.chooseLanguage")}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3" role="radiogroup" aria-label={t(language, "welcome.chooseLanguage")}>
           {LANGUAGE_OPTIONS.map((opt) => {
             const selected = language === opt.id;
             return (
@@ -132,22 +132,22 @@ export default function WelcomePage(): React.ReactElement {
                 onClick={() => onPickLanguage(opt.id)}
                 onDoubleClick={() => speak(t(opt.id, "welcome.greeting." + opt.id))}
                 className={cn(
-                  "group flex min-h-40 flex-col items-center justify-center gap-4 rounded-3xl border-4 bg-card p-6 text-center shadow-sm transition-all",
-                  "hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/50",
+                  "group flex min-h-32 flex-col items-center justify-center gap-3 rounded-2xl border-2 bg-card p-4 text-center shadow-sm transition-all",
+                  "hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
                   selected
-                    ? "border-primary bg-primary/5 shadow-lg ring-4 ring-primary/20"
+                    ? "border-primary bg-primary/5 shadow-md ring-2 ring-primary/20"
                     : "border-border",
                 )}
               >
-                <span className="text-4xl font-extrabold leading-none text-foreground sm:text-5xl">
+                <span className="text-3xl font-bold leading-none text-foreground sm:text-4xl">
                   {t(language, opt.previewKey)}
                 </span>
-                <span className="text-base font-semibold text-muted-foreground">
+                <span className="text-sm font-medium text-muted-foreground">
                   {t(language, opt.subKey)}
                 </span>
                 {selected ? (
-                  <span className="mt-1 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground">
-                    <Volume2 className="size-4" aria-hidden="true" />
+                  <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+                    <Volume2 className="size-3" aria-hidden="true" />
                     {t(language, "welcome.greeting." + opt.id)}
                   </span>
                 ) : null}
@@ -160,7 +160,7 @@ export default function WelcomePage(): React.ReactElement {
           <Button
             type="button"
             size="lg"
-            className="h-14 min-w-64 rounded-2xl px-10 text-lg font-bold shadow-lg"
+            className="h-12 min-w-48 rounded-xl px-8 text-base font-semibold shadow-sm"
             onClick={onStart}
           >
             {t(language, "welcome.start")}
@@ -170,23 +170,23 @@ export default function WelcomePage(): React.ReactElement {
 
       <section
         aria-label="Compliance"
-        className="mx-auto max-w-6xl px-6 pb-16"
+        className="mx-auto max-w-6xl px-6 pb-12"
       >
-        <ul className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-          <li className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 font-semibold text-foreground">
-            <Building2 className="size-5 shrink-0 text-primary" aria-hidden="true" />
+        <ul className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+          <li className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 font-medium text-foreground">
+            <Building2 className="size-4 shrink-0 text-primary" aria-hidden="true" />
             {t(language, "welcome.compliance.ministry")}
           </li>
-          <li className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 font-semibold text-foreground">
-            <ShieldCheck className="size-5 shrink-0 text-primary" aria-hidden="true" />
+          <li className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 font-medium text-foreground">
+            <ShieldCheck className="size-4 shrink-0 text-primary" aria-hidden="true" />
             {t(language, "welcome.compliance.abdm")}
           </li>
-          <li className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 font-semibold text-foreground">
-            <Lock className="size-5 shrink-0 text-primary" aria-hidden="true" />
+          <li className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 font-medium text-foreground">
+            <Lock className="size-4 shrink-0 text-primary" aria-hidden="true" />
             {t(language, "welcome.compliance.dpdp")}
           </li>
-          <li className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 font-semibold text-foreground">
-            <Sparkles className="size-5 shrink-0 text-primary" aria-hidden="true" />
+          <li className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 font-medium text-foreground">
+            <Sparkles className="size-4 shrink-0 text-primary" aria-hidden="true" />
             {t(language, "welcome.compliance.iiit")}
           </li>
         </ul>

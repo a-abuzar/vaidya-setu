@@ -77,26 +77,26 @@ export default function IdentifyPage(): React.ReactElement {
 
   return (
     <KioskShell step="identify">
-      <header className="flex flex-col gap-3 text-center sm:text-left">
-        <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+      <header className="flex flex-col gap-2 text-center sm:text-left">
+        <h1 className="text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
           {t(language, "identify.heading")}
         </h1>
-        <p className="text-lg text-muted-foreground sm:text-xl">
+        <p className="text-base text-muted-foreground sm:text-lg">
           {t(language, "identify.subheading")}
         </p>
       </header>
 
       {mode === "choose" ? (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <PathCard
-            icon={<IdCard className="size-8" aria-hidden="true" />}
+            icon={<IdCard className="size-6" aria-hidden="true" />}
             title={t(language, "identify.linkAbha")}
             body={t(language, "identify.linkAbha.desc")}
             onSelect={onChooseLink}
             variant="primary"
           />
           <PathCard
-            icon={<ShieldOff className="size-8" aria-hidden="true" />}
+            icon={<ShieldOff className="size-6" aria-hidden="true" />}
             title={t(language, "identify.continueAnon")}
             body={t(language, "identify.continueAnon.desc")}
             onSelect={onChooseAnon}
@@ -104,27 +104,27 @@ export default function IdentifyPage(): React.ReactElement {
           />
         </div>
       ) : (
-        <section className="flex flex-col gap-6 rounded-3xl border border-border bg-card p-6 shadow-sm sm:p-8">
+        <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6">
           <div className="flex items-center gap-3">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="min-h-12 rounded-2xl px-4"
+              className="min-h-10 rounded-xl px-3"
               onClick={() => setMode("choose")}
             >
               ←
             </Button>
-            <h2 className="text-2xl font-bold">
+            <h2 className="text-xl font-bold">
               {t(language, "identify.linkAbha")}
             </h2>
           </div>
           <Separator />
-          <Field className="gap-3">
-            <FieldLabel htmlFor="abha-number" className="text-xl font-bold">
+          <Field className="gap-2">
+            <FieldLabel htmlFor="abha-number" className="text-base font-bold">
               {t(language, "identify.abhaLabel")}
             </FieldLabel>
-            <FieldDescription className="text-base">
+            <FieldDescription className="text-sm">
               {t(language, "identify.abhaHelp")}
             </FieldDescription>
             <input
@@ -133,7 +133,7 @@ export default function IdentifyPage(): React.ReactElement {
               inputMode="numeric"
               autoComplete="off"
               placeholder={t(language, "identify.abhaPlaceholder")}
-              className="min-h-16 rounded-2xl border-2 border-input bg-background text-xl font-semibold tracking-wider focus:border-primary focus:outline-none focus:ring-4 focus:ring-ring/30"
+              className="min-h-12 rounded-xl border-2 border-input bg-background text-base font-semibold tracking-wider focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30"
               value={abha}
               onChange={(e) =>
                 setAbha(e.target.value.replace(/[^0-9-]/g, "").slice(0, 17))
@@ -142,8 +142,8 @@ export default function IdentifyPage(): React.ReactElement {
             />
           </Field>
           <Separator />
-          <Field className="gap-3">
-            <FieldLabel className="text-xl font-bold">
+          <Field className="gap-2">
+            <FieldLabel className="text-base font-bold">
               {t(language, "identify.method")}
             </FieldLabel>
             <RadioGroup
@@ -153,21 +153,21 @@ export default function IdentifyPage(): React.ReactElement {
                   setMethod(v);
                 }
               }}
-              className="gap-3"
+              className="gap-2"
             >
               <VerifyOption
                 value="aadhaar_otp"
-                icon={<IdCardLucide className="size-5" aria-hidden="true" />}
+                icon={<IdCardLucide className="size-4" aria-hidden="true" />}
                 label={t(language, "verify.aadhaar_otp")}
               />
               <VerifyOption
                 value="mobile_otp"
-                icon={<Phone className="size-5" aria-hidden="true" />}
+                icon={<Phone className="size-4" aria-hidden="true" />}
                 label={t(language, "verify.mobile_otp")}
               />
               <VerifyOption
                 value="demographics"
-                icon={<UserRound className="size-5" aria-hidden="true" />}
+                icon={<UserRound className="size-4" aria-hidden="true" />}
                 label={t(language, "verify.demographics")}
               />
             </RadioGroup>
@@ -178,7 +178,7 @@ export default function IdentifyPage(): React.ReactElement {
               type="button"
               variant="outline"
               size="lg"
-              className="min-h-14 rounded-2xl px-6 text-lg"
+              className="min-h-10 rounded-xl px-4 text-sm"
               onClick={onChooseAnon}
             >
               {t(language, "identify.continueAnon")}
@@ -187,10 +187,10 @@ export default function IdentifyPage(): React.ReactElement {
               type="button"
               size="lg"
               disabled={submitting}
-              className="min-h-14 rounded-2xl px-8 text-lg font-bold shadow-lg"
+              className="min-h-12 rounded-xl px-6 text-base font-bold shadow-sm"
               onClick={onSubmitLink}
             >
-              <KeyRound className="mr-2 size-5" aria-hidden="true" />
+              <KeyRound className="mr-2 size-4" aria-hidden="true" />
               {t(language, "identify.submit")}
             </Button>
           </div>
@@ -218,7 +218,7 @@ function PathCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        "flex min-h-64 flex-col gap-4 rounded-3xl border-4 p-8 text-left shadow-sm transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/50",
+        "flex min-h-48 flex-col gap-3 rounded-2xl border-2 p-6 text-left shadow-sm transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
         variant === "primary"
           ? "border-primary bg-primary/5 hover:border-primary/60"
           : "border-border bg-card hover:border-primary/40",
@@ -226,7 +226,7 @@ function PathCard({
     >
       <span
         className={cn(
-          "inline-flex size-16 items-center justify-center rounded-2xl",
+          "inline-flex size-12 items-center justify-center rounded-xl",
           variant === "primary"
             ? "bg-primary text-primary-foreground"
             : "bg-secondary text-secondary-foreground",
@@ -235,11 +235,11 @@ function PathCard({
       >
         {icon}
       </span>
-      <h2 className="text-2xl font-bold leading-tight">{title}</h2>
-      <p className="text-lg leading-relaxed text-muted-foreground">{body}</p>
-      <span className="mt-auto inline-flex items-center gap-2 text-base font-bold text-primary">
+      <h2 className="text-xl font-bold leading-tight">{title}</h2>
+      <p className="text-base leading-relaxed text-muted-foreground">{body}</p>
+      <span className="mt-auto inline-flex items-center gap-1.5 text-sm font-bold text-primary">
         {title}
-        <ArrowRight className="size-5" aria-hidden="true" />
+        <ArrowRight className="size-4" aria-hidden="true" />
       </span>
     </button>
   );
@@ -257,12 +257,12 @@ function VerifyOption({
   return (
     <label
       className={cn(
-        "flex min-h-16 cursor-pointer items-center gap-4 rounded-2xl border-2 bg-background p-4 text-lg font-semibold transition-colors hover:bg-muted",
+        "flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border bg-background p-3 text-base font-medium transition-colors hover:bg-muted",
         "has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:checked]:ring-2 has-[:checked]:ring-primary/30",
       )}
     >
       <RadioGroupItem value={value} />
-      <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-foreground">
+      <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-foreground">
         {icon}
       </span>
       <span>{label}</span>

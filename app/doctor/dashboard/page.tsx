@@ -83,8 +83,8 @@ export default function DoctorDashboardPage(): React.ReactElement {
       <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-8">
         <header className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">Doctor Dashboard</h1>
-            <p className="text-base text-muted-foreground">
+            <h1 className="text-2xl font-extrabold tracking-tight">Doctor Dashboard</h1>
+            <p className="text-sm text-muted-foreground">
               Sessions ready for AYUSH physician review.
             </p>
           </div>
@@ -102,19 +102,19 @@ export default function DoctorDashboardPage(): React.ReactElement {
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard
-            icon={<ClipboardList className="size-6" aria-hidden="true" />}
+            icon={<ClipboardList className="size-5" aria-hidden="true" />}
             label="Awaiting your review"
             value={String(review.length)}
             tone="primary"
           />
           <StatCard
-            icon={<AlertTriangle className="size-6" aria-hidden="true" />}
+            icon={<AlertTriangle className="size-5" aria-hidden="true" />}
             label="Red-flag alerts"
             value={String(sessions.filter((s) => s.redFlag).length)}
             tone="destructive"
           />
           <StatCard
-            icon={<Loader2 className="size-6" aria-hidden="true" />}
+            icon={<Loader2 className="size-5" aria-hidden="true" />}
             label="Currently at kiosk"
             value={String(inProgress.length)}
             tone="muted"
@@ -128,7 +128,7 @@ export default function DoctorDashboardPage(): React.ReactElement {
         ) : null}
 
         <section className="flex flex-col gap-3">
-          <h2 className="text-xl font-bold">Sessions</h2>
+          <h2 className="text-lg font-bold">Sessions</h2>
           {loading ? (
             <Card className="flex items-center gap-3 p-6 text-muted-foreground">
               <Loader2 className="size-5 animate-spin" aria-hidden="true" />
@@ -176,7 +176,7 @@ function StatCard({
     >
       <span
         aria-hidden="true"
-        className={`flex size-12 items-center justify-center rounded-2xl ${
+        className={`flex size-10 items-center justify-center rounded-xl ${
           tone === "destructive"
             ? "bg-destructive text-destructive-foreground"
             : tone === "muted"
@@ -187,10 +187,10 @@ function StatCard({
         {icon}
       </span>
       <div>
-        <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {label}
         </p>
-        <p className="text-3xl font-extrabold tracking-tight">{value}</p>
+        <p className="text-2xl font-extrabold tracking-tight">{value}</p>
       </div>
     </Card>
   );
@@ -203,15 +203,15 @@ function SessionCard({ session }: { session: SessionRow }): React.ReactElement {
       <div className="flex items-start gap-4">
         <span
           aria-hidden="true"
-          className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground"
+          className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground"
         >
-          <Stethoscope className="size-6" />
+          <Stethoscope className="size-5" />
         </span>
         <div>
-          <p className="text-lg font-bold">
+          <p className="text-base font-semibold">
             {session.chiefComplaint || "No chief complaint recorded"}
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {session.patientId.slice(0, 8)} • {dateLabel} • {session.status.replace("_", " ")}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -237,7 +237,7 @@ function SessionCard({ session }: { session: SessionRow }): React.ReactElement {
       </div>
       <Link
         href={`/doctor/session/${session.id}`}
-        className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-md transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-md transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         Review
         <ArrowRight className="size-4" aria-hidden="true" />

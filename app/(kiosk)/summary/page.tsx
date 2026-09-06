@@ -106,20 +106,20 @@ export default function SummaryPage(): React.ReactElement {
   if (summary) {
     return (
       <KioskShell step="summary">
-        <section className="flex flex-col items-center gap-6 rounded-3xl border-2 border-success bg-success/5 p-12 text-center shadow-sm">
-          <CheckCircle2 className="size-20 text-success" aria-hidden="true" />
-          <h1 className="text-4xl font-extrabold leading-tight text-foreground sm:text-5xl">
+        <section className="flex flex-col items-center gap-4 rounded-2xl border-2 border-success bg-success/5 p-8 text-center shadow-sm">
+          <CheckCircle2 className="size-16 text-success" aria-hidden="true" />
+          <h1 className="text-3xl font-extrabold leading-tight text-foreground sm:text-4xl">
             {t(language, "summary.thanks")}
           </h1>
-          <p className="max-w-2xl text-xl leading-relaxed text-muted-foreground">
+          <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground">
             {t(language, "summary.subheading")}
           </p>
           <Separator />
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <p className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               {t(language, "summary.takenAway")}
             </p>
-            <p className="font-mono text-5xl font-extrabold tracking-widest text-foreground">
+            <p className="font-mono text-4xl font-extrabold tracking-widest text-foreground">
               {summary.takeAwayCode}
             </p>
             <TakeAwayQr value={summary.takeAwayCode} />
@@ -128,7 +128,7 @@ export default function SummaryPage(): React.ReactElement {
             type="button"
             variant="outline"
             size="lg"
-            className="min-h-14 rounded-2xl px-6 text-base"
+            className="min-h-12 rounded-xl px-4 text-sm"
             onClick={() => {
               resetSession();
               router.push("/");
@@ -179,23 +179,23 @@ export default function SummaryPage(): React.ReactElement {
 
   return (
     <KioskShell step="summary">
-      <header className="flex flex-col gap-3 text-center sm:text-left">
-        <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+      <header className="flex flex-col gap-2 text-center sm:text-left">
+        <h1 className="text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
           {t(language, "summary.heading")}
         </h1>
-        <p className="text-lg text-muted-foreground sm:text-xl">
+        <p className="text-base text-muted-foreground sm:text-lg">
           {t(language, "summary.subheading")}
         </p>
       </header>
 
-      <section className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-2xl font-bold">{t(language, "summary.chiefComplaint")}</h2>
+          <h2 className="text-xl font-bold">{t(language, "summary.chiefComplaint")}</h2>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="min-h-12 gap-2 rounded-2xl px-4 text-base font-semibold"
+            className="min-h-10 gap-2 rounded-xl px-3 text-sm font-semibold"
             onClick={readAloud}
           >
             <Volume2 className="size-4" aria-hidden="true" />
@@ -203,11 +203,11 @@ export default function SummaryPage(): React.ReactElement {
           </Button>
         </div>
         {chiefComplaint ? (
-          <p className="rounded-2xl bg-secondary/30 p-4 text-xl font-semibold leading-relaxed">
+          <p className="rounded-xl bg-secondary/30 p-3 text-lg font-semibold leading-relaxed">
             {chiefComplaint}
           </p>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border p-4 text-base text-muted-foreground">
+          <p className="rounded-xl border border-dashed border-border p-3 text-sm text-muted-foreground">
             —
           </p>
         )}
@@ -216,32 +216,32 @@ export default function SummaryPage(): React.ReactElement {
       {redFlagDetected ? (
         <section
           role="alert"
-          className="flex items-start gap-3 rounded-3xl border-2 border-destructive bg-destructive/5 p-5 shadow-sm"
+          className="flex items-start gap-3 rounded-2xl border-2 border-destructive bg-destructive/5 p-4 shadow-sm"
         >
-          <AlertTriangle className="size-7 shrink-0 text-destructive" aria-hidden="true" />
+          <AlertTriangle className="size-6 shrink-0 text-destructive" aria-hidden="true" />
           <div>
-            <p className="text-base font-bold uppercase tracking-wider text-destructive">
+            <p className="text-sm font-bold uppercase tracking-wider text-destructive">
               {t(language, "summary.redFlag")}
             </p>
-            <p className="mt-1 text-lg font-semibold text-foreground">
+            <p className="mt-1 text-base font-semibold text-foreground">
               {redFlagReason ?? "—"}
             </p>
           </div>
         </section>
       ) : null}
 
-      <section className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="mb-3 text-2xl font-bold">{t(language, "summary.history")}</h2>
+      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <h2 className="mb-3 text-xl font-bold">{t(language, "summary.history")}</h2>
         {patientAnswers.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-border p-4 text-base text-muted-foreground">
+          <p className="rounded-xl border border-dashed border-border p-3 text-sm text-muted-foreground">
             —
           </p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-1.5">
             {patientAnswers.map((ans, i) => (
               <li
                 key={i}
-                className="rounded-2xl border border-border bg-background p-3 text-lg leading-relaxed"
+                className="rounded-xl border border-border bg-background p-2.5 text-base leading-relaxed"
               >
                 {ans}
               </li>
@@ -250,9 +250,9 @@ export default function SummaryPage(): React.ReactElement {
         )}
       </section>
 
-      <section className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="mb-3 text-2xl font-bold">{t(language, "summary.documents")}</h2>
-        <p className="text-xl font-semibold text-foreground">
+      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <h2 className="mb-3 text-xl font-bold">{t(language, "summary.documents")}</h2>
+        <p className="text-lg font-semibold text-foreground">
           {String(uploadedDocumentIds.length)}
         </p>
       </section>
@@ -264,32 +264,32 @@ export default function SummaryPage(): React.ReactElement {
           type="button"
           variant="outline"
           size="lg"
-          className="min-h-14 rounded-2xl px-6 text-lg"
+          className="min-h-10 rounded-xl px-4 text-sm"
           onClick={() => router.push("/encounter")}
         >
-          <ArrowLeft className="mr-2 size-5" aria-hidden="true" />
+          <ArrowLeft className="mr-2 size-4" aria-hidden="true" />
           {t(language, "summary.fix")}
         </Button>
         <Button
           type="button"
           variant="outline"
           size="lg"
-          className="min-h-14 rounded-2xl px-6 text-lg"
+          className="min-h-10 rounded-xl px-4 text-sm"
           onClick={() => window.print()}
         >
-          <Printer className="mr-2 size-5" aria-hidden="true" />
+          <Printer className="mr-2 size-4" aria-hidden="true" />
           {t(language, "summary.print")}
         </Button>
         <Button
           type="button"
           size="lg"
-          className="min-h-16 rounded-2xl px-10 text-xl font-bold shadow-lg"
+          className="min-h-12 rounded-xl px-8 text-base font-bold shadow-sm"
           onClick={() => setConfirmOpen(true)}
           disabled={submitting}
         >
           {submitting ? (
             <>
-              <Loader2 className="mr-2 size-5 animate-spin" aria-hidden="true" />
+              <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
               {t(language, "summary.finalizing")}
             </>
           ) : (
@@ -309,7 +309,7 @@ export default function SummaryPage(): React.ReactElement {
             type="button"
             variant="outline"
             size="lg"
-            className="min-h-14 rounded-2xl px-6 text-lg"
+            className="min-h-10 rounded-xl px-4 text-sm"
             disabled={submitting}
             onClick={() => setConfirmOpen(false)}
           >
@@ -318,7 +318,7 @@ export default function SummaryPage(): React.ReactElement {
           <Button
             type="button"
             size="lg"
-            className="min-h-14 rounded-2xl px-8 text-lg font-bold shadow-md"
+            className="min-h-12 rounded-xl px-6 text-base font-bold shadow-sm"
             onClick={() => void onFinalize()}
             disabled={submitting}
           >
@@ -358,7 +358,7 @@ function TakeAwayQr({ value }: { value: string }): React.ReactElement {
     <div
       role="img"
       aria-label={`QR placeholder for ${value}`}
-      className={cn("rounded-2xl border-2 border-border p-3")}
+      className={cn("rounded-xl border-2 border-border p-2")}
     >
       <div className="grid grid-cols-[repeat(25,minmax(0,1fr))] gap-0">
         {cells.flatMap((row, r) =>

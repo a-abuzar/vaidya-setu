@@ -180,11 +180,11 @@ export default function DocumentsPage(): React.ReactElement {
 
   return (
     <KioskShell step="documents">
-      <header className="flex flex-col gap-3 text-center sm:text-left">
-        <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+      <header className="flex flex-col gap-2 text-center sm:text-left">
+        <h1 className="text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
           {t(language, "documents.heading")}
         </h1>
-        <p className="text-lg text-muted-foreground sm:text-xl">
+        <p className="text-base text-muted-foreground sm:text-lg">
           {t(language, "documents.subheading")}
         </p>
       </header>
@@ -193,22 +193,22 @@ export default function DocumentsPage(): React.ReactElement {
         <>
           <section
             aria-label={t(language, "documents.heading")}
-            className="grid grid-cols-2 gap-4 sm:grid-cols-4"
+            className="grid grid-cols-2 gap-3 sm:grid-cols-4"
           >
             {DOC_TYPES.map((dt) => (
               <button
                 key={dt.id}
                 type="button"
                 onClick={() => void startCamera(dt.id)}
-                className="group flex min-h-32 flex-col items-center justify-center gap-3 rounded-3xl border-4 border-border bg-card p-6 shadow-sm transition-all hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/50"
+                className="group flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-border bg-card p-4 shadow-sm transition-all hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 <span
-                  className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"
+                  className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"
                   aria-hidden="true"
                 >
                   {dt.icon}
                 </span>
-                <span className="text-lg font-bold">{t(language, dt.labelKey)}</span>
+                <span className="text-sm font-semibold">{t(language, dt.labelKey)}</span>
               </button>
             ))}
           </section>
@@ -218,26 +218,26 @@ export default function DocumentsPage(): React.ReactElement {
               type="button"
               variant="outline"
               size="lg"
-              className="min-h-16 rounded-2xl px-6 text-lg"
+              className="min-h-12 rounded-xl px-4 text-base"
               onClick={goToSummary}
             >
-              <X className="mr-2 size-5" aria-hidden="true" />
+              <X className="mr-2 size-4" aria-hidden="true" />
               {t(language, "documents.skip")}
             </Button>
             {uploadedDocumentIds.length > 0 ? (
               <Button
                 type="button"
                 size="lg"
-                className="min-h-16 rounded-2xl px-8 text-lg font-bold shadow-lg"
+                className="min-h-12 rounded-xl px-6 text-base font-bold shadow-sm"
                 onClick={goToSummary}
               >
                 {t(language, "nav.next")}
-                <Plus className="ml-2 size-5" aria-hidden="true" />
+                <Plus className="ml-2 size-4" aria-hidden="true" />
               </Button>
             ) : null}
           </div>
           {permissionDenied ? (
-            <p className="text-center text-base font-semibold text-warning">
+            <p className="text-center text-sm font-semibold text-warning">
               {t(language, "documents.camera.permission")}
             </p>
           ) : null}
@@ -245,8 +245,8 @@ export default function DocumentsPage(): React.ReactElement {
       ) : null}
 
       {phase.kind === "camera" ? (
-        <section className="flex flex-col gap-4">
-          <div className="relative overflow-hidden rounded-3xl border-4 border-dashed border-primary bg-black">
+        <section className="flex flex-col gap-3">
+          <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-primary bg-black">
             <video
               ref={videoRef}
               playsInline
@@ -254,8 +254,8 @@ export default function DocumentsPage(): React.ReactElement {
               className="aspect-video w-full object-cover"
               aria-label="Camera preview"
             />
-            <div className="pointer-events-none absolute inset-0 m-8 rounded-2xl border-4 border-dashed border-white/80" />
-            <p className="pointer-events-none absolute inset-x-0 bottom-4 text-center text-lg font-bold text-white drop-shadow-md">
+            <div className="pointer-events-none absolute inset-0 m-6 rounded-xl border-2 border-dashed border-white/80" />
+            <p className="pointer-events-none absolute inset-x-0 bottom-4 text-center text-base font-bold text-white drop-shadow-md">
               {t(language, "documents.guide")}
             </p>
           </div>
@@ -264,7 +264,7 @@ export default function DocumentsPage(): React.ReactElement {
               type="button"
               variant="outline"
               size="lg"
-              className="min-h-14 rounded-2xl px-6 text-lg"
+              className="min-h-10 rounded-xl px-4 text-sm"
               onClick={() => {
                 stopCamera();
                 setPhase({ kind: "pick_type" });
@@ -275,10 +275,10 @@ export default function DocumentsPage(): React.ReactElement {
             <Button
               type="button"
               size="lg"
-              className="min-h-16 rounded-2xl px-10 text-xl font-bold shadow-lg"
+              className="min-h-12 rounded-xl px-8 text-base font-bold shadow-sm"
               onClick={capturePhoto}
             >
-              <Camera className="mr-2 size-6" aria-hidden="true" />
+              <Camera className="mr-2 size-5" aria-hidden="true" />
               {t(language, "documents.capture")}
             </Button>
           </div>
@@ -286,8 +286,8 @@ export default function DocumentsPage(): React.ReactElement {
       ) : null}
 
       {phase.kind === "preview" ? (
-        <section className="flex flex-col gap-4">
-          <div className="overflow-hidden rounded-3xl border-4 border-primary bg-card shadow-sm">
+        <section className="flex flex-col gap-3">
+          <div className="overflow-hidden rounded-2xl border-2 border-primary bg-card shadow-sm">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={phase.dataUrl}
@@ -300,19 +300,19 @@ export default function DocumentsPage(): React.ReactElement {
               type="button"
               variant="outline"
               size="lg"
-              className="min-h-14 rounded-2xl px-6 text-lg"
+              className="min-h-10 rounded-xl px-4 text-sm"
               onClick={retake}
             >
-              <RotateCw className="mr-2 size-5" aria-hidden="true" />
+              <RotateCw className="mr-2 size-4" aria-hidden="true" />
               {t(language, "documents.retake")}
             </Button>
             <Button
               type="button"
               size="lg"
-              className="min-h-14 rounded-2xl px-8 text-lg font-bold shadow-md"
+              className="min-h-12 rounded-xl px-6 text-base font-bold shadow-sm"
               onClick={() => void submitPhoto()}
             >
-              <Check className="mr-2 size-5" aria-hidden="true" />
+              <Check className="mr-2 size-4" aria-hidden="true" />
               {t(language, "documents.preview")}
             </Button>
           </div>
@@ -320,16 +320,16 @@ export default function DocumentsPage(): React.ReactElement {
       ) : null}
 
       {phase.kind === "uploading" ? (
-        <section className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card p-12 text-center">
-          <ScanLine className="size-16 animate-pulse text-primary" aria-hidden="true" />
-          <h2 className="text-2xl font-bold">
+        <section className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
+          <ScanLine className="size-10 animate-pulse text-primary" aria-hidden="true" />
+          <h2 className="text-xl font-bold">
             {t(language, "documents.processing")}
           </h2>
         </section>
       ) : null}
 
       {phase.kind === "pick_type" && uploadedDocumentIds.length > 0 ? (
-        <p className="text-center text-base font-semibold text-success">
+        <p className="text-center text-sm font-semibold text-success">
           ✓ {uploadedDocumentIds.length} uploaded
         </p>
       ) : null}

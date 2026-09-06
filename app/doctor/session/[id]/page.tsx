@@ -217,7 +217,7 @@ export default function SessionDetailPage(): React.ReactElement {
       <>
         <DoctorTopBar active="session" />
         <main className="mx-auto flex max-w-6xl items-center justify-center gap-3 px-4 py-24 text-muted-foreground">
-          <Loader2 className="size-6 animate-spin" aria-hidden="true" />
+          <Loader2 className="size-5 animate-spin" aria-hidden="true" />
           Loading session…
         </main>
       </>
@@ -275,10 +275,10 @@ export default function SessionDetailPage(): React.ReactElement {
                 {detail.status.replace("_", " ")}
               </Badge>
             </div>
-            <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
+            <h1 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
               {detail.summary.chiefComplaint || "No chief complaint"}
             </h1>
-            <p className="text-base text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Session {detail.id.slice(0, 8)} • Patient {detail.patientId.slice(0, 8)} •
               {" "}
               {new Date(detail.startedAt).toLocaleString()}
@@ -348,7 +348,7 @@ export default function SessionDetailPage(): React.ReactElement {
 
         {detail.redFlag && detail.redFlagReason ? (
           <Card className="flex items-start gap-3 border-destructive bg-destructive/5 p-4">
-            <AlertTriangle className="size-6 shrink-0 text-destructive" aria-hidden="true" />
+            <AlertTriangle className="size-5 shrink-0 text-destructive" aria-hidden="true" />
             <div>
               <p className="font-bold uppercase tracking-wider text-destructive">Red flag reason</p>
               <p className="mt-1 text-base font-semibold">{detail.redFlagReason}</p>
@@ -365,7 +365,7 @@ export default function SessionDetailPage(): React.ReactElement {
           </TabsList>
 
           <TabsPanel value="summary">
-            <Card className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-3">
+            <Card className="grid grid-cols-1 gap-6 p-4 lg:grid-cols-3">
               <div className="lg:col-span-2">
                 <Section title="Chief complaint">
                   {editing ? (
@@ -375,33 +375,33 @@ export default function SessionDetailPage(): React.ReactElement {
                         id="cc"
                         value={editedChiefComplaint}
                         onChange={(e) => setEditedChiefComplaint(e.target.value)}
-                        className="min-h-24 w-full rounded-2xl border-2 border-input bg-background p-3 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-ring/30"
+                        className="min-h-20 w-full rounded-xl border-2 border-input bg-background p-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30"
                       />
                     </Field>
                   ) : (
-                    <p className="text-base leading-relaxed">{detail.summary.chiefComplaint || "—"}</p>
+                    <p className="text-sm leading-relaxed">{detail.summary.chiefComplaint || "—"}</p>
                   )}
                 </Section>
                 <Section title="History of Present Illness">
-                  <p className="whitespace-pre-wrap text-base leading-relaxed">{detail.summary.hpi || "—"}</p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{detail.summary.hpi || "—"}</p>
                 </Section>
                 <Section title="Past History">
-                  <p className="whitespace-pre-wrap text-base leading-relaxed">{detail.summary.pastHistory || "—"}</p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{detail.summary.pastHistory || "—"}</p>
                 </Section>
                 <Section title="Drug & Allergy History">
-                  <p className="whitespace-pre-wrap text-base leading-relaxed">{detail.summary.drugAllergyHistory || "—"}</p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{detail.summary.drugAllergyHistory || "—"}</p>
                 </Section>
                 <Section title="Family History">
-                  <p className="whitespace-pre-wrap text-base leading-relaxed">{detail.summary.familyHistory || "—"}</p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{detail.summary.familyHistory || "—"}</p>
                 </Section>
                 <Section title="Personal History">
-                  <p className="whitespace-pre-wrap text-base leading-relaxed">{detail.summary.personalHistory || "—"}</p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{detail.summary.personalHistory || "—"}</p>
                 </Section>
                 <Section title="Review of Systems">
-                  <p className="whitespace-pre-wrap text-base leading-relaxed">{detail.summary.ros || "—"}</p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{detail.summary.ros || "—"}</p>
                 </Section>
                 <Section title="Prior Investigations">
-                  <p className="whitespace-pre-wrap text-base leading-relaxed">{detail.summary.priorInvestigations || "—"}</p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{detail.summary.priorInvestigations || "—"}</p>
                 </Section>
               </div>
               <div>
@@ -409,14 +409,14 @@ export default function SessionDetailPage(): React.ReactElement {
                   <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                     Patient demographics
                   </p>
-                  <p className="text-base">
+                  <p className="text-sm">
                     Anonymous kiosk visit
                   </p>
                   <Separator />
                   <p className="mt-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                     Summary status
                   </p>
-                  <p className="text-base">
+                  <p className="text-sm">
                     {detail.summary.id
                       ? detail.summary.finalizedAt
                         ? "Finalized " + new Date(detail.summary.finalizedAt).toLocaleString()
@@ -447,9 +447,9 @@ export default function SessionDetailPage(): React.ReactElement {
           </TabsPanel>
 
           <TabsPanel value="transcript">
-            <Card className="flex flex-col gap-3 p-6">
+            <Card className="flex flex-col gap-3 p-4">
               {detail.transcript.length === 0 ? (
-                <p className="text-muted-foreground">No transcript.</p>
+               <p className="text-muted-foreground">No transcript.</p>
               ) : (
                 <ol className="flex flex-col gap-3">
                   {detail.transcript.map((t, i) => (
@@ -460,13 +460,13 @@ export default function SessionDetailPage(): React.ReactElement {
                       {t.role === "system" ? (
                         <span
                           aria-hidden="true"
-                          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
                         >
-                          <Stethoscope className="size-5" />
+                          <Stethoscope className="size-4" />
                         </span>
                       ) : null}
                       <div
-                        className={`max-w-[80%] rounded-2xl p-3 text-base ${
+                        className={`max-w-[80%] rounded-2xl p-2.5 text-sm ${
                           t.role === "patient"
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted text-foreground"
@@ -485,7 +485,7 @@ export default function SessionDetailPage(): React.ReactElement {
           </TabsPanel>
 
           <TabsPanel value="documents">
-            <Card className="flex flex-col gap-3 p-6">
+            <Card className="flex flex-col gap-3 p-4">
               {detail.documents.length === 0 ? (
                 <p className="text-muted-foreground">No documents uploaded.</p>
               ) : (
@@ -493,18 +493,18 @@ export default function SessionDetailPage(): React.ReactElement {
                   {detail.documents.map((d) => (
                     <li
                       key={d.id}
-                      className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3"
                     >
                       <div className="flex items-center gap-3">
                         <span
                           aria-hidden="true"
-                          className="flex size-10 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground"
+                          className="flex size-10 items-center justify-center rounded-xl bg-secondary text-secondary-foreground"
                         >
                           {DOC_TYPE_ICON[d.docType]}
                         </span>
                         <div>
-                          <p className="text-base font-bold">{DOC_TYPE_LABEL[d.docType]}</p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm font-bold">{DOC_TYPE_LABEL[d.docType]}</p>
+                          <p className="text-xs text-muted-foreground">
                             {new Date(d.uploadedAt).toLocaleString()}
                           </p>
                         </div>
@@ -518,18 +518,18 @@ export default function SessionDetailPage(): React.ReactElement {
           </TabsPanel>
 
           <TabsPanel value="ayush">
-            <Card className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-2">
+            <Card className="grid grid-cols-1 gap-6 p-4 lg:grid-cols-2">
               <div>
                 <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                   Dashavidha Pariksha
                 </p>
                 <ul className="flex flex-col gap-2">
                   {Object.entries(detail.summary.ayush ?? {}).map(([key, value]) => (
-                    <li key={key} className="flex justify-between gap-3 rounded-2xl border border-border bg-background p-3">
+                    <li key={key} className="flex justify-between gap-3 rounded-xl border border-border bg-background p-3">
                       <span className="text-sm font-semibold capitalize text-muted-foreground">
                         {key.replace(/([A-Z])/g, " $1")}
                       </span>
-                      <span className="text-base font-semibold">{value ?? "—"}</span>
+                      <span className="text-sm font-semibold">{value ?? "—"}</span>
                     </li>
                   ))}
                 </ul>
@@ -565,7 +565,7 @@ function Section({
 }): React.ReactElement {
   return (
     <div className="mb-4">
-      <h3 className="mb-2 text-base font-bold uppercase tracking-wider text-muted-foreground">
+      <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
         {title}
       </h3>
       {children}

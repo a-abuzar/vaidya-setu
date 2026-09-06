@@ -327,35 +327,35 @@ export default function EncounterPage(): React.ReactElement {
 
   return (
     <KioskShell step="encounter">
-      <header className="flex flex-col gap-3 text-center sm:text-left">
-        <div className="flex flex-wrap items-center gap-2 self-center sm:self-start">
-          <Badge variant="secondary" className="px-3 py-1 text-sm">
+      <header className="flex flex-col gap-2 text-center sm:text-left">
+        <div className="flex flex-wrap items-center gap-1.5 self-center sm:self-start">
+          <Badge variant="secondary" className="px-2 py-0.5 text-xs">
             <Activity className="mr-1 size-3" aria-hidden="true" />
             {ayushModeEnabled ? "AYUSH mode" : "Standard mode"}
           </Badge>
           {sessionId ? (
-            <Badge variant="outline" className="px-3 py-1 text-sm">
+            <Badge variant="outline" className="px-2 py-0.5 text-xs">
               Session {sessionId.slice(0, 8)}
             </Badge>
           ) : null}
         </div>
-        <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+        <h1 className="text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
           {t(language, "encounter.heading")}
         </h1>
-        <p className="text-lg text-muted-foreground sm:text-xl">
+        <p className="text-base text-muted-foreground sm:text-lg">
           {t(language, "encounter.subheading")}
         </p>
       </header>
 
       <section
         aria-live="polite"
-        className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card p-8 text-center shadow-sm"
+        className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-6 text-center shadow-sm"
       >
-        <h2 className="max-w-3xl text-3xl font-extrabold leading-snug sm:text-4xl">
+        <h2 className="max-w-3xl text-2xl font-extrabold leading-snug sm:text-3xl">
           {currentQuestion ?? t(language, "encounter.placeholder")}
         </h2>
         {isProcessing ? (
-          <div className="flex items-center gap-2 text-base font-semibold text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             {t(language, "encounter.processing")}
           </div>
@@ -365,20 +365,20 @@ export default function EncounterPage(): React.ReactElement {
       {pendingUtterance !== null ? (
         <section
           aria-live="polite"
-          className="flex flex-col gap-4 rounded-3xl border-2 border-primary/40 bg-primary/5 p-6 shadow-sm"
+          className="flex flex-col gap-3 rounded-2xl border-2 border-primary/40 bg-primary/5 p-4 shadow-sm"
         >
-          <h3 className="text-xl font-bold sm:text-2xl">
+          <h3 className="text-lg font-bold sm:text-xl">
             {t(language, "encounter.correctTitle")}
           </h3>
-          <p className="rounded-2xl bg-background p-4 text-xl font-semibold leading-relaxed sm:text-2xl">
+          <p className="rounded-xl bg-background p-3 text-lg font-semibold leading-relaxed sm:text-xl">
             “{pendingUtterance}”
           </p>
-          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"
               size="lg"
-              className="min-h-14 rounded-2xl px-6 text-lg"
+              className="min-h-10 rounded-xl px-4 text-sm"
               onClick={onDismissUtterance}
             >
               {t(language, "encounter.wrong")}
@@ -386,33 +386,33 @@ export default function EncounterPage(): React.ReactElement {
             <Button
               type="button"
               size="lg"
-              className="min-h-14 rounded-2xl px-8 text-lg font-bold shadow-md"
+              className="min-h-10 rounded-xl px-6 text-sm font-bold shadow-sm"
               onClick={onConfirmUtterance}
               disabled={isProcessing}
             >
-              <CheckCircle2 className="mr-2 size-5" aria-hidden="true" />
+              <CheckCircle2 className="mr-2 size-4" aria-hidden="true" />
               {t(language, "encounter.correct.yes")}
             </Button>
           </div>
         </section>
       ) : (
-        <section className="flex flex-col items-center gap-6 rounded-3xl border border-border bg-card p-6 shadow-sm">
+        <section className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <HoldToSpeak
             onTranscript={onHoldTranscript}
             disabled={isProcessing}
           />
           <Separator />
           <div className="w-full">
-            <p className="mb-3 text-base font-bold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
               {t(language, "encounter.optionsTitle")}
             </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {touchOptions.map((opt) => (
                 <button
                   key={opt.id}
                   type="button"
                   onClick={() => onPickOption(opt)}
-                  className="min-h-16 rounded-2xl border-2 border-border bg-background px-4 py-3 text-lg font-semibold transition-colors hover:border-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/50"
+                  className="min-h-12 rounded-xl border border-border bg-background px-3 py-2 text-base font-medium transition-colors hover:border-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                 >
                   {opt.label}
                 </button>
@@ -422,12 +422,12 @@ export default function EncounterPage(): React.ReactElement {
         </section>
       )}
 
-      <section className="rounded-3xl border border-border bg-card/50 p-5 text-sm text-muted-foreground">
-        <p className="mb-2 text-base font-bold uppercase tracking-wider text-foreground">
+      <section className="rounded-2xl border border-border bg-card/50 p-4 text-sm text-muted-foreground">
+        <p className="mb-1 text-sm font-bold uppercase tracking-wider text-foreground">
           {t(language, "encounter.lastHeard")}
         </p>
         {lastSystemEntry ? (
-          <p className="text-base leading-relaxed">
+          <p className="text-sm leading-relaxed">
             <span className="font-bold text-foreground">Dr: </span>
             {lastSystemEntry.text}
           </p>
@@ -435,7 +435,7 @@ export default function EncounterPage(): React.ReactElement {
           <p>{t(language, "encounter.placeholder")}</p>
         )}
         {transcript.length > 0 ? (
-          <ul className="mt-3 flex flex-col gap-2">
+          <ul className="mt-2 flex flex-col gap-1.5">
             {[...transcript]
               .slice(-3)
               .reverse()
@@ -443,7 +443,7 @@ export default function EncounterPage(): React.ReactElement {
                 e.role === "patient" ? (
                   <li
                     key={i}
-                    className="rounded-2xl bg-secondary px-4 py-2 text-base font-medium text-secondary-foreground"
+                    className="rounded-xl bg-secondary px-3 py-1.5 text-sm font-medium text-secondary-foreground"
                   >
                     {e.text}
                   </li>
@@ -475,29 +475,29 @@ function RedFlagInterrupt({
 
   return (
     <main className="fixed inset-0 z-50 flex items-center justify-center bg-destructive p-6">
-      <div className="max-w-3xl rounded-3xl bg-card p-8 shadow-2xl sm:p-12">
+      <div className="max-w-xl rounded-2xl bg-card p-6 shadow-xl sm:p-8">
         <div className="mb-6 flex items-center gap-4">
           <span
             aria-hidden="true"
-            className="flex size-16 items-center justify-center rounded-2xl bg-destructive text-destructive-foreground sm:size-20"
+            className="flex size-12 items-center justify-center rounded-xl bg-destructive text-destructive-foreground sm:size-16"
           >
-            <AlertTriangle className="size-10 sm:size-12" />
+            <AlertTriangle className="size-8 sm:size-10" />
           </span>
-          <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-destructive sm:text-4xl">
+          <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-destructive sm:text-3xl">
             {t(language, "redflag.heading")}
           </h1>
         </div>
         {reason ? (
-          <div className="mb-6 rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
-            <p className="text-base font-bold uppercase tracking-wider text-destructive">
+          <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+            <p className="text-sm font-bold uppercase tracking-wider text-destructive">
               {t(language, "redflag.reason")}
             </p>
-            <p className="mt-1 text-xl font-semibold leading-snug text-foreground sm:text-2xl">
+            <p className="mt-1 text-lg font-semibold leading-snug text-foreground sm:text-xl">
               {reason}
             </p>
           </div>
         ) : null}
-        <p className="text-xl leading-relaxed text-foreground sm:text-2xl">
+        <p className="text-lg leading-relaxed text-foreground sm:text-xl">
           {t(language, "redflag.body")}
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
@@ -505,7 +505,7 @@ function RedFlagInterrupt({
             type="button"
             variant="outline"
             size="lg"
-            className="min-h-14 rounded-2xl px-6 text-base font-semibold"
+            className="min-h-10 rounded-xl px-4 text-sm font-semibold"
             onClick={onContinueAnyway}
           >
             {t(language, "redflag.continueAnyway")}
@@ -513,10 +513,10 @@ function RedFlagInterrupt({
           <Button
             type="button"
             size="lg"
-            className="min-h-16 rounded-2xl px-8 text-xl font-bold shadow-lg"
+            className="min-h-12 rounded-xl px-6 text-lg font-bold shadow-sm"
             onClick={onAcknowledge}
           >
-            <CheckCircle2 className="mr-2 size-6" aria-hidden="true" />
+            <CheckCircle2 className="mr-2 size-5" aria-hidden="true" />
             {t(language, "redflag.confirm")}
           </Button>
         </div>
@@ -543,7 +543,7 @@ function StatusPlaceholder({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-4 rounded-3xl border-2 p-12 text-center",
+        "flex flex-col items-center justify-center gap-4 rounded-2xl border p-8 text-center",
         variant === "error"
           ? "border-destructive bg-destructive/5"
           : "border-border bg-card",
@@ -551,16 +551,16 @@ function StatusPlaceholder({
     >
       <div
         className={cn(
-          "flex size-20 items-center justify-center rounded-2xl",
+          "flex size-14 items-center justify-center rounded-xl",
           variant === "error" ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground",
         )}
         aria-hidden="true"
       >
         {icon}
       </div>
-      <h2 className="text-2xl font-bold sm:text-3xl">{title}</h2>
+      <h2 className="text-xl font-bold sm:text-2xl">{title}</h2>
       {description ? (
-        <p className="max-w-xl text-base text-muted-foreground sm:text-lg">
+        <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
           {description}
         </p>
       ) : null}
@@ -568,7 +568,7 @@ function StatusPlaceholder({
         <Button
           type="button"
           size="lg"
-          className="min-h-14 rounded-2xl px-6 text-lg"
+          className="min-h-12 rounded-xl px-4 text-base"
           onClick={onAction}
         >
           {actionLabel}

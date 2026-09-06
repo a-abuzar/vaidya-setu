@@ -98,22 +98,22 @@ export default function ConsentPage(): React.ReactElement {
 
   return (
     <KioskShell step="consent">
-      <header className="flex flex-col gap-3 text-center sm:text-left">
-        <div className="flex items-center justify-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-semibold uppercase tracking-wider text-secondary-foreground sm:justify-start sm:self-start">
-          <Lock className="size-4" aria-hidden="true" />
+      <header className="flex flex-col gap-2 text-center sm:text-left">
+        <div className="flex items-center justify-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-secondary-foreground sm:justify-start sm:self-start">
+          <Lock className="size-3" aria-hidden="true" />
           {t(language, "step.consent")}
         </div>
-        <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+        <h1 className="text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
           {t(language, "consent.heading")}
         </h1>
-        <p className="text-lg text-muted-foreground sm:text-xl">
+        <p className="text-base text-muted-foreground sm:text-lg">
           {t(language, "consent.subheading")}
         </p>
       </header>
 
       <Separator />
 
-      <ul className="flex flex-col gap-4">
+      <ul className="flex flex-col gap-3">
         {ALL_CONSENT_PURPOSES.map((purpose) => {
           const meta = CONSENT_PURPOSE_KEY[purpose];
           const granted = decisions[purpose];
@@ -121,42 +121,42 @@ export default function ConsentPage(): React.ReactElement {
             <li
               key={purpose}
               className={cn(
-                "flex flex-col gap-4 rounded-3xl border-2 bg-card p-6 shadow-sm sm:flex-row sm:items-center sm:gap-6",
+                "flex flex-col gap-3 rounded-2xl border-2 bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:gap-4",
                 granted
                   ? "border-primary/40 ring-2 ring-primary/20"
                   : "border-border",
               )}
             >
-              <div className="flex flex-1 flex-col gap-2">
+              <div className="flex flex-1 flex-col gap-1.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-xl font-bold leading-tight sm:text-2xl">
+                  <h2 className="text-lg font-bold leading-tight sm:text-xl">
                     {t(language, meta.titleKey)}
                   </h2>
                   {meta.required ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-warning px-3 py-1 text-xs font-bold uppercase tracking-wider text-warning-foreground">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-warning px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-warning-foreground">
                       <AlertCircle className="size-3" aria-hidden="true" />
                       {t(language, "consent.required")}
                     </span>
                   ) : null}
                 </div>
-                <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
+                <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
                   {t(language, meta.descKey)}
                 </p>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="mt-2 min-h-12 w-fit gap-2 rounded-2xl px-4 text-base font-semibold"
+                  className="mt-2 min-h-10 w-fit gap-1.5 rounded-xl px-3 text-sm font-semibold"
                   onClick={() => handlePlay(purpose)}
                 >
-                  <Volume2 className="size-4" aria-hidden="true" />
+                  <Volume2 className="size-3" aria-hidden="true" />
                   {t(language, "consent.playAudio")}
                 </Button>
               </div>
-              <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end">
+              <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
                 <span
                   className={cn(
-                    "text-base font-bold",
+                    "text-sm font-bold",
                     granted ? "text-primary" : "text-muted-foreground",
                   )}
                 >
@@ -188,7 +188,7 @@ export default function ConsentPage(): React.ReactElement {
         <Button
           type="button"
           size="lg"
-          className="min-h-16 rounded-2xl px-10 text-xl font-bold shadow-lg"
+          className="min-h-12 rounded-xl px-8 text-base font-bold shadow-sm"
           onClick={handleContinue}
         >
           {t(language, "consent.review")}
