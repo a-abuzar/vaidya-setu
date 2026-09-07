@@ -263,8 +263,8 @@ Document Upload                          ┌────────────
 - `PatientInput = AudioInput | TouchInput` (discriminated union)
 - `ConversationContext` — session state, transcript, SOCRATES state, Dashavidha state
 - `InterviewStage` — `chief_complaint → hpi → past_history → drug_allergy → family_history → personal_history → ros → ayush_extended → complete`
-- `TriageEvaluation` — `redFlag`, `redFlagReason`, `socratesFieldsMissing[]`, `nextQuestion`
-- `ConversationTurn` — full response including updated transcript, triage, next prompt, touch options, audio
+- `TriageEvaluation` — `redFlag`, `redFlagReason`, `socratesFieldsMissing[]`, `nextQuestion`, `languageUsed`
+- `ConversationTurn` — full response including updated transcript, triage, next prompt, touch options, audio. (The AI detects the patient's spoken language dynamically and responds in the same language, keeping the transcript true to the spoken languages.)
 
 **SOCRATES pain assessment fields**: `site`, `onset`, `character`, `radiation`, `associations`, `timeCourse`, `exacerbatingRelieving`, `severity`
 
@@ -626,7 +626,7 @@ The patient journey is six steps; each step renders inside the shared
 1. **Welcome / Language select** (`app/(kiosk)/page.tsx`) — three
    large language cards (Hindi / English / Tamil) with native-script
    preview, audio greeting on selection, and Ministry / ABDM / DPDP
-   trust badges.
+   trust badges. (Note: Language can also be switched instantly at any time from the persistent `KioskTopBar`).
 
 2. **Consent** (`app/(kiosk)/consent/page.tsx`) — granular toggles
    for the four `ConsentPurpose` values defined in

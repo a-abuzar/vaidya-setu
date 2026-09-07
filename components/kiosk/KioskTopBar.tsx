@@ -24,6 +24,7 @@ import { toast } from "sonner";
 export function KioskTopBar(): React.ReactElement {
   const router = useRouter();
   const language = useKioskUi((s) => s.language);
+  const setLanguage = useKioskUi((s) => s.setLanguage);
   const [helpOpen, setHelpOpen] = useState(false);
 
   const handleBack = (): void => {
@@ -72,17 +73,42 @@ export function KioskTopBar(): React.ReactElement {
             <span className="hidden sm:inline">{t(language, "nav.home")}</span>
           </Button>
         </div>
-        <Button
-          type="button"
-          variant="default"
-          size="lg"
-          className="min-h-14 gap-2 rounded-2xl px-4 text-base font-semibold shadow-md"
-          onClick={handleHelp}
-          aria-label={t(language, "nav.help")}
-        >
-          <HelpCircle className="size-5" aria-hidden="true" />
-          <span>{t(language, "nav.help")}</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex overflow-hidden rounded-2xl border border-border shadow-sm">
+            <button
+              type="button"
+              onClick={() => setLanguage("en")}
+              className={`px-4 py-3 min-h-14 text-base font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${language === "en" ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-muted"}`}
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguage("hi")}
+              className={`border-l border-border px-4 py-3 min-h-14 text-base font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${language === "hi" ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-muted"}`}
+            >
+              HI
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguage("ta")}
+              className={`border-l border-border px-4 py-3 min-h-14 text-base font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${language === "ta" ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-muted"}`}
+            >
+              TA
+            </button>
+          </div>
+          <Button
+            type="button"
+            variant="default"
+            size="lg"
+            className="min-h-14 gap-2 rounded-2xl px-4 text-base font-semibold shadow-md"
+            onClick={handleHelp}
+            aria-label={t(language, "nav.help")}
+          >
+            <HelpCircle className="size-5" aria-hidden="true" />
+            <span>{t(language, "nav.help")}</span>
+          </Button>
+        </div>
       </div>
 
       {helpOpen ? (

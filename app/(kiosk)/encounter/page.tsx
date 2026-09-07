@@ -45,6 +45,7 @@ interface TriageData {
   redFlagReason: string | null;
   socratesFieldsMissing: string[];
   nextQuestion: string | null;
+  languageUsed?: "en" | "hi" | "ta" | null;
 }
 
 const FALLBACK_TOUCH_OPTIONS: TouchOption[] = [
@@ -152,7 +153,9 @@ export default function EncounterPage(): React.ReactElement {
 
   useEffect(() => {
     if (!currentQuestion) return;
-    speak(currentQuestion);
+    // Find the corresponding transcript entry to get its language
+    const sysEntry = transcript.slice().reverse().find(e => e.text === currentQuestion && e.role === "system");
+    speak(currentQuestion, sysEntry?.lang);
     return () => cancelSpeech();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQuestion]);
@@ -193,7 +196,7 @@ export default function EncounterPage(): React.ReactElement {
           addTranscriptEntry({
             role: "system",
             text: nextQ,
-            lang: language,
+            lang: triage.languageUsed ?? language,
             timestamp: new Date().toISOString(),
           });
         }
@@ -281,7 +284,10 @@ export default function EncounterPage(): React.ReactElement {
 
   const onDismissUtterance = (): void => {
     setPendingUtterance(null);
-    if (currentQuestion) speak(currentQuestion);
+    if (currentQuestion) {
+      const sysEntry = transcript.slice().reverse().find(e => e.text === currentQuestion && e.role === "system");
+      speak(currentQuestion, sysEntry?.lang);
+    }
   };
 
   // ---------- Early returns AFTER all hooks -----------------------
