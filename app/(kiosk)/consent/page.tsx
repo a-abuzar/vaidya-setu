@@ -121,9 +121,9 @@ export default function ConsentPage(): React.ReactElement {
             <li
               key={purpose}
               className={cn(
-                "flex flex-col gap-3 rounded-2xl border-2 bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:gap-4",
+                "flex flex-col gap-3 rounded-2xl border-2 bg-card p-4 shadow-sm transition-colors sm:flex-row sm:items-center sm:gap-4",
                 granted
-                  ? "border-primary/40 ring-2 ring-primary/20"
+                  ? "border-[var(--primary-mid)] bg-[var(--primary-xlight)]"
                   : "border-border",
               )}
             >
@@ -146,7 +146,7 @@ export default function ConsentPage(): React.ReactElement {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="mt-2 min-h-10 w-fit gap-1.5 rounded-xl px-3 text-sm font-semibold"
+                  className="mt-2 min-h-10 w-fit gap-1.5 rounded-xl border-[var(--primary-mid)] px-3 text-sm font-semibold text-[var(--primary-mid)]"
                   onClick={() => handlePlay(purpose)}
                 >
                   <Volume2 className="size-3" aria-hidden="true" />
@@ -157,7 +157,7 @@ export default function ConsentPage(): React.ReactElement {
                 <span
                   className={cn(
                     "text-sm font-bold",
-                    granted ? "text-primary" : "text-muted-foreground",
+                    granted ? "text-[var(--primary-mid)]" : "text-muted-foreground",
                   )}
                 >
                   {granted
@@ -188,7 +188,7 @@ export default function ConsentPage(): React.ReactElement {
         <Button
           type="button"
           size="lg"
-          className="min-h-12 rounded-xl px-8 text-base font-bold shadow-sm"
+          className="min-h-14 rounded-2xl bg-primary px-10 text-base font-bold text-primary-foreground shadow-md hover:bg-[var(--primary-mid)]"
           onClick={handleContinue}
         >
           {t(language, "consent.review")}

@@ -218,10 +218,10 @@ function PathCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        "flex min-h-48 flex-col gap-3 rounded-2xl border-2 p-6 text-left shadow-sm transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+        "flex min-h-48 flex-col gap-3 rounded-2xl border-2 p-6 text-left shadow-sm transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-mid)]/60 focus-visible:ring-offset-2",
         variant === "primary"
-          ? "border-primary bg-primary/5 hover:border-primary/60"
-          : "border-border bg-card hover:border-primary/40",
+          ? "border-[var(--primary-mid)] bg-[var(--primary-xlight)] hover:border-[var(--primary-mid)]"
+          : "border-border bg-card hover:border-[var(--primary-light)]",
       )}
     >
       <span
@@ -237,7 +237,7 @@ function PathCard({
       </span>
       <h2 className="text-xl font-bold leading-tight">{title}</h2>
       <p className="text-base leading-relaxed text-muted-foreground">{body}</p>
-      <span className="mt-auto inline-flex items-center gap-1.5 text-sm font-bold text-primary">
+      <span className="mt-auto inline-flex items-center gap-1.5 text-sm font-bold text-[var(--primary-mid)]">
         {title}
         <ArrowRight className="size-4" aria-hidden="true" />
       </span>

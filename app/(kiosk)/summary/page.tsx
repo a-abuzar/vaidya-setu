@@ -259,31 +259,36 @@ export default function SummaryPage(): React.ReactElement {
 
       <Separator />
 
-      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end">
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* Secondary actions — left */}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="min-h-12 rounded-2xl px-5 text-sm"
+            onClick={() => router.push("/encounter")}
+          >
+            <ArrowLeft className="mr-2 size-4" aria-hidden="true" />
+            {t(language, "summary.fix")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="min-h-12 rounded-2xl px-5 text-sm"
+            onClick={() => window.print()}
+          >
+            <Printer className="mr-2 size-4" aria-hidden="true" />
+            {t(language, "summary.print")}
+          </Button>
+        </div>
+
+        {/* Primary CTA — right */}
         <Button
           type="button"
-          variant="outline"
           size="lg"
-          className="min-h-10 rounded-xl px-4 text-sm"
-          onClick={() => router.push("/encounter")}
-        >
-          <ArrowLeft className="mr-2 size-4" aria-hidden="true" />
-          {t(language, "summary.fix")}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className="min-h-10 rounded-xl px-4 text-sm"
-          onClick={() => window.print()}
-        >
-          <Printer className="mr-2 size-4" aria-hidden="true" />
-          {t(language, "summary.print")}
-        </Button>
-        <Button
-          type="button"
-          size="lg"
-          className="min-h-12 rounded-xl px-8 text-base font-bold shadow-sm"
+          className="min-h-14 rounded-2xl bg-primary px-10 text-lg font-bold text-primary-foreground shadow-md hover:bg-[var(--primary-mid)]"
           onClick={() => setConfirmOpen(true)}
           disabled={submitting}
         >

@@ -17,52 +17,62 @@ export default function BasicInfoPage(): React.ReactElement {
   const router = useRouter();
   const language = useKioskUi((s) => s.language);
   const setPatientInfo = useSessionStore((s) => s.setPatientInfo);
-  
+
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
   const ageInputRef = useRef<HTMLInputElement>(null);
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     if (!age || !gender) {
-      toast.error("Please fill all fields");
+      toast.error(t(language, "error.generic"));
       return;
     }
-    // Set a placeholder for name since we removed it, or leave it empty if allowed.
-    // Assuming name is optional in setPatientInfo if it's removed from UI.
-    setPatientInfo({ name: "", age, gender });
+    setPatientInfo({ age, gender });
     router.push("/encounter");
   };
 
-  const onNumpadKey = useCallback((key: string) => {
+  const onNumpadKey = useCallback((key: string): void => {
     if (key === "Backspace") {
       setAge((prev) => prev.slice(0, -1));
     } else {
       setAge((prev) => (prev.length < 3 ? prev + key : prev));
     }
-    
     if (ageInputRef.current) {
       ageInputRef.current.focus();
     }
   }, []);
 
+  const genderOptions = [
+    { value: "male", labelKey: "basic.gender.male" },
+    { value: "female", labelKey: "basic.gender.female" },
+    { value: "other", labelKey: "basic.gender.other" },
+  ] as const;
+
   return (
     <KioskShell step="identify">
       <header className="flex flex-col gap-2 text-center sm:text-left">
         <h1 className="text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
-          Basic Information
+          {t(language, "basic.heading")}
         </h1>
         <p className="text-base text-muted-foreground sm:text-lg">
-          Please provide some basic details before we begin.
+          {t(language, "basic.subheading")}
         </p>
       </header>
 
-      <form onSubmit={onSubmit} className="flex flex-col gap-8 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8 mt-6">
-        <div className="flex flex-col lg:flex-row gap-8">
+      <form
+        onSubmit={onSubmit}
+        className="flex flex-col gap-8 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-8"
+      >
+        {/* Age field + numpad */}
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           <div className="flex-1">
             <Field className="gap-3">
-              <FieldLabel htmlFor="patient-age" className="text-lg font-bold">
-                Age
+              <FieldLabel
+                htmlFor="patient-age"
+                className="text-lg font-bold"
+              >
+                {t(language, "basic.age")}
               </FieldLabel>
               <input
                 ref={ageInputRef}
@@ -70,66 +80,57 @@ export default function BasicInfoPage(): React.ReactElement {
                 type="number"
                 inputMode="numeric"
                 autoComplete="off"
-                placeholder="Your Age"
-                className="w-full min-h-14 rounded-xl border-2 border-input bg-background px-4 text-xl font-semibold focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30"
+                placeholder={t(language, "basic.agePlaceholder")}
+                className="w-full min-h-14 rounded-xl border-2 border-input bg-background px-4 text-2xl font-bold tracking-wider focus:border-[var(--primary-mid)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-light)]"
                 value={age}
                 onChange={(e) => {
                   const val = e.target.value.replace(/[^0-9]/g, "").slice(0, 3);
                   setAge(val);
                 }}
+                aria-label={t(language, "basic.age")}
               />
             </Field>
           </div>
-          <div className="flex justify-center lg:justify-start shrink-0">
+          <div className="flex justify-center lg:justify-start lg:pt-10 shrink-0">
             <VirtualNumpad onKeyPress={onNumpadKey} />
           </div>
         </div>
 
+        {/* Gender field */}
         <Field className="gap-3">
           <FieldLabel className="text-lg font-bold">
-            Gender
+            {t(language, "basic.gender")}
           </FieldLabel>
           <RadioGroup
             value={gender}
-            onValueChange={setGender}
-            className="flex flex-col sm:flex-row gap-4"
+            onValueChange={(v: unknown) => setGender(String(v))}
+            className="flex flex-col gap-3 sm:flex-row"
           >
-            <label
-              className={cn(
-                "flex flex-1 min-h-16 cursor-pointer items-center justify-center gap-3 rounded-xl border-2 bg-background p-4 text-lg font-bold transition-all hover:bg-muted",
-                "has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:checked]:ring-4 has-[:checked]:ring-primary/20",
-              )}
-            >
-              <RadioGroupItem value="male" className="hidden" />
-              <span>Male</span>
-            </label>
-            <label
-              className={cn(
-                "flex flex-1 min-h-16 cursor-pointer items-center justify-center gap-3 rounded-xl border-2 bg-background p-4 text-lg font-bold transition-all hover:bg-muted",
-                "has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:checked]:ring-4 has-[:checked]:ring-primary/20",
-              )}
-            >
-              <RadioGroupItem value="female" className="hidden" />
-              <span>Female</span>
-            </label>
-            <label
-              className={cn(
-                "flex flex-1 min-h-16 cursor-pointer items-center justify-center gap-3 rounded-xl border-2 bg-background p-4 text-lg font-bold transition-all hover:bg-muted",
-                "has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:checked]:ring-4 has-[:checked]:ring-primary/20",
-              )}
-            >
-              <RadioGroupItem value="other" className="hidden" />
-              <span>Other</span>
-            </label>
+            {genderOptions.map((opt) => (
+              <label
+                key={opt.value}
+                className={cn(
+                  "flex flex-1 min-h-14 cursor-pointer items-center justify-center gap-3 rounded-2xl border-2 bg-background p-4 text-lg font-bold transition-all",
+                  "hover:bg-[var(--primary-xlight)] focus-within:ring-2 focus-within:ring-[var(--primary-mid)]/50",
+                  gender === opt.value
+                    ? "border-[var(--primary-mid)] bg-[var(--primary-xlight)] ring-2 ring-[var(--primary-light)]"
+                    : "border-border",
+                )}
+              >
+                <RadioGroupItem value={opt.value} className="hidden" />
+                <span>{t(language, opt.labelKey)}</span>
+              </label>
+            ))}
           </RadioGroup>
         </Field>
 
-        <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:justify-end mt-8 border-t pt-6">
+        {/* Actions */}
+        <div className="flex flex-col items-stretch gap-3 border-t pt-6 sm:flex-row sm:justify-end">
           <Button
             type="button"
             variant="outline"
             size="lg"
-            className="min-h-14 rounded-xl px-8 text-lg"
+            className="min-h-12 rounded-2xl px-8 text-base"
             onClick={() => router.push("/identify")}
           >
             {t(language, "nav.back")}
@@ -137,7 +138,7 @@ export default function BasicInfoPage(): React.ReactElement {
           <Button
             type="submit"
             size="lg"
-            className="min-h-14 rounded-xl px-12 text-lg font-bold shadow-md"
+            className="min-h-14 rounded-2xl bg-primary px-12 text-lg font-bold text-primary-foreground shadow-md hover:bg-[var(--primary-mid)]"
           >
             {t(language, "nav.continue")}
           </Button>

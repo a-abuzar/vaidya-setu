@@ -4,80 +4,112 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ---------------------------------------------------------------------- */
-/* VaidyaSetu visual tokens                                               */
-/*                                                                     */
-/* Calm, near-white surfaces with a soft teal primary. Background is    */
-/* never pure white (reduces glare in bright OPDs) but reads as clean  */
-/* light. Warm saffron stays as a tiny highlight only — badges, icons,  */
-/* accents — never a dominant surface fill.                             */
-/*                                                                     */
-/* Light mode is the default and is ALWAYS applied, regardless of the  */
-/* OS preference. Kiosks must open in light mode with no toggle needed. */
-/* The dark token set is reserved (off by default) for future use.      */
+/* VaidyaSetu design tokens — 5-stop blue palette                         */
+/*                                                                         */
+/* The five stops and their assigned roles:                                */
+/*   --deep-twilight   #03045E  → --primary (nav, buttons, headings)       */
+/*   --bright-teal-blue#0077B6  → --primary-mid (hover states, links)      */
+/*   --turquoise-surf  #00B4D8  → --primary-accent (highlights, progress)  */
+/*   --frosted-blue    #90E0EF  → --primary-light (selected card fill)      */
+/*   --light-cyan      #CAF0F8  → --primary-xlight (surface tints, badges) */
+/*                                                                         */
+/* Backgrounds are neutral off-white — the palette carries                 */
+/* brand/interactive weight, not full-page fills.                          */
+/* WCAG AA required; AAA preferred for body text (elderly users).          */
+/*                                                                         */
+/* Light mode is always applied. The kiosk opens in light mode.            */
+/* Dark token set is reserved (off by default) for future use.             */
 /* ---------------------------------------------------------------------- */
 
 :root {
-  /* Primary — soft teal/sage, mid-saturation */
-  --primary: oklch(65% 0.1 190);
+  /* ── Brand / interactive ── */
+  /* #03045E deep navy — primary actions, filled buttons */
+  --primary: oklch(22% 0.17 262);
   --primary-foreground: oklch(99% 0 0);
 
-  /* Secondary — very light grey/blue */
-  --secondary: oklch(95% 0.01 200);
-  --secondary-foreground: oklch(25% 0.02 200);
+  /* #0077B6 bright teal-blue — hover, focus rings, links */
+  --primary-mid: oklch(46% 0.17 240);
 
-  /* Accent — saffron highlight, used sparingly */
-  --accent: oklch(80% 0.05 200);
-  --accent-foreground: oklch(25% 0.02 200);
+  /* #00B4D8 turquoise — progress bars, active step indicator, accents */
+  --primary-accent: oklch(65% 0.15 222);
 
-  /* Surfaces — near-white background, subtle distinct card */
-  --background: oklch(98.5% 0.002 200);
-  --foreground: oklch(25% 0.01 200);
-  --card: oklch(97% 0.005 200);
-  --card-foreground: oklch(25% 0.01 200);
-  --popover: oklch(97% 0.005 200);
-  --popover-foreground: oklch(25% 0.01 200);
+  /* #90E0EF frosted blue — selected card fill, active toggle background */
+  --primary-light: oklch(85% 0.07 218);
 
-  /* Muted — neutral light gray */
-  --muted: oklch(94% 0.005 200);
-  --muted-foreground: oklch(40% 0.01 200);
+  /* #CAF0F8 light cyan — surface tints, compliance badge fills */
+  --primary-xlight: oklch(94% 0.04 212);
 
-  /* Status — distinct but in a lighter treatment */
-  --destructive: oklch(65% 0.15 25);
+  /* ── Secondary surface ── */
+  --secondary: oklch(95% 0.01 212);
+  --secondary-foreground: oklch(25% 0.04 240);
+
+  /* ── Accent (saffron — used sparingly for required/warning badges only) ── */
+  --accent: oklch(82% 0.14 75);
+  --accent-foreground: oklch(25% 0.04 60);
+
+  /* ── Base surfaces ── */
+  /* Near-white with a faint blue tint — reduces glare in bright OPDs */
+  --background: oklch(98% 0.006 212);
+  --foreground: oklch(18% 0.015 250);
+
+  --card: oklch(99% 0.004 212);
+  --card-foreground: oklch(18% 0.015 250);
+
+  --popover: oklch(99% 0.004 212);
+  --popover-foreground: oklch(18% 0.015 250);
+
+  /* ── Muted ── */
+  --muted: oklch(95% 0.008 212);
+  --muted-foreground: oklch(45% 0.02 240);
+
+  /* ── Status ── */
+  --destructive: oklch(58% 0.22 25);
   --destructive-foreground: oklch(99% 0 0);
-  --success: oklch(68% 0.12 150);
-  --success-foreground: oklch(99% 0 0);
-  --warning: oklch(80% 0.12 80);
-  --warning-foreground: oklch(25% 0.02 60);
 
-  /* Borders — soft, not heavy */
-  --border: oklch(92% 0.01 200);
-  --input: oklch(92% 0.01 200);
-  --ring: oklch(65% 0.1 190);
+  --success: oklch(62% 0.16 155);
+  --success-foreground: oklch(99% 0 0);
+
+  --warning: oklch(80% 0.16 75);
+  --warning-foreground: oklch(22% 0.04 60);
+
+  /* ── Borders ── */
+  --border: oklch(90% 0.02 212);
+  --input: oklch(90% 0.02 212);
+  /* Focus ring uses primary-mid for clear visibility */
+  --ring: oklch(46% 0.17 240);
 
   --radius: 0.5rem;
 }
 
-/* Dark token set retained for future use — NOT applied by default. */
+/* Dark token set — NOT applied by default. Retained for future use. */
 :root.dark {
-  --background: oklch(18% 0.01 195);
-  --foreground: oklch(96% 0.005 195);
-  --card: oklch(22% 0.01 195);
-  --card-foreground: oklch(96% 0.005 195);
-  --popover: oklch(22% 0.01 195);
-  --popover-foreground: oklch(96% 0.005 195);
-  --primary: oklch(72% 0.1 195);
-  --primary-foreground: oklch(15% 0.01 195);
-  --secondary: oklch(30% 0.02 60);
-  --secondary-foreground: oklch(96% 0.005 60);
-  --accent: oklch(78% 0.13 75);
+  --primary: oklch(72% 0.14 222);
+  --primary-foreground: oklch(12% 0.02 250);
+  --primary-mid: oklch(60% 0.16 232);
+  --primary-accent: oklch(65% 0.15 222);
+  --primary-light: oklch(32% 0.08 240);
+  --primary-xlight: oklch(22% 0.05 240);
+  --background: oklch(15% 0.02 250);
+  --foreground: oklch(95% 0.006 212);
+  --card: oklch(18% 0.02 250);
+  --card-foreground: oklch(95% 0.006 212);
+  --popover: oklch(18% 0.02 250);
+  --popover-foreground: oklch(95% 0.006 212);
+  --secondary: oklch(25% 0.04 250);
+  --secondary-foreground: oklch(90% 0.01 212);
+  --accent: oklch(76% 0.17 75);
   --accent-foreground: oklch(15% 0.01 60);
-  --muted: oklch(28% 0.01 195);
-  --muted-foreground: oklch(75% 0.01 195);
-  --destructive: oklch(58% 0.2 25);
+  --muted: oklch(25% 0.02 250);
+  --muted-foreground: oklch(70% 0.01 240);
+  --destructive: oklch(58% 0.22 25);
   --destructive-foreground: oklch(99% 0 0);
-  --border: oklch(35% 0.01 195);
-  --input: oklch(35% 0.01 195);
-  --ring: oklch(72% 0.1 195);
+  --success: oklch(65% 0.16 155);
+  --success-foreground: oklch(99% 0 0);
+  --warning: oklch(76% 0.16 75);
+  --warning-foreground: oklch(22% 0.04 60);
+  --border: oklch(30% 0.03 250);
+  --input: oklch(30% 0.03 250);
+  --ring: oklch(60% 0.16 232);
 }
 
 @theme inline {
@@ -89,6 +121,10 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-mid: var(--primary-mid);
+  --color-primary-accent: var(--primary-accent);
+  --color-primary-light: var(--primary-light);
+  --color-primary-xlight: var(--primary-xlight);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -114,9 +150,9 @@
 }
 
 /* ---------------------------------------------------------------------- */
-/* Base typography — 16px base, smaller than the prior 20px. The          */
-/* accessibility bar scales the root font-size for patients who request   */
-/* larger text. Touch targets stay fixed-height so they don't grow.      */
+/* Base typography                                                         */
+/* 16px base. Accessibility bar scales root font-size for larger text.    */
+/* Touch targets use fixed heights so they don't grow with the font.       */
 /* ---------------------------------------------------------------------- */
 
 html,
@@ -177,7 +213,7 @@ html[data-high-contrast="true"] :where(button, a, [role="button"]) {
   }
 }
 
-/* Heading rhythm. One step down from the previous banner-sized scale. */
+/* Heading rhythm — modest scale, not banner-sized. */
 h1 {
   font-size: clamp(1.5rem, 1vw + 1rem, 2rem);
   font-weight: 700;

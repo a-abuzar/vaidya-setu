@@ -99,6 +99,15 @@ const en: Dict = {
   "identify.notImplemented": "ABDM gateway pending. Continuing without linking.",
   "identify.skipSuccess": "Continuing with temporary session.",
 
+  "basic.heading": "Basic Information",
+  "basic.subheading": "A few details before we begin.",
+  "basic.age": "Age",
+  "basic.agePlaceholder": "Your age",
+  "basic.gender": "Gender",
+  "basic.gender.male": "Male",
+  "basic.gender.female": "Female",
+  "basic.gender.other": "Other",
+
   "encounter.heading": "How are you feeling?",
   "encounter.subheading": "Speak or tap.",
   "encounter.placeholder": "Hold microphone and describe symptoms.",
@@ -268,6 +277,15 @@ const hi: Dict = {
   "identify.notImplemented": "ABDM पेंडिंग। बिना जोड़े जारी।",
   "identify.skipSuccess": "अस्थायी सत्र जारी।",
 
+  "basic.heading": "बुनियादी जानकारी",
+  "basic.subheading": "शुरू करने से पहले कुछ जानकारी।",
+  "basic.age": "उम्र",
+  "basic.agePlaceholder": "आपकी उम्र",
+  "basic.gender": "लिंग",
+  "basic.gender.male": "पुरुष",
+  "basic.gender.female": "महिला",
+  "basic.gender.other": "अन्य",
+
   "encounter.heading": "कैसा महसूस कर रहे हैं?",
   "encounter.subheading": "बोलें या टैप करें।",
   "encounter.placeholder": "माइक दबाकर लक्षण बताएँ।",
@@ -436,6 +454,15 @@ const ta: Dict = {
   "identify.submit": "சரிபார்",
   "identify.notImplemented": "ABDM நிலுவையில். இணைப்பின்றி தொடர்கிறது.",
   "identify.skipSuccess": "தற்காலிக அமர்வு.",
+
+  "basic.heading": "அடிப்படை தகவல்",
+  "basic.subheading": "தொடங்குவதற்கு முன் சில விவரங்கள்.",
+  "basic.age": "வயது",
+  "basic.agePlaceholder": "உங்கள் வயது",
+  "basic.gender": "பாலினம்",
+  "basic.gender.male": "ஆண்",
+  "basic.gender.female": "பெண்",
+  "basic.gender.other": "மற்றவை",
 
   "encounter.heading": "எப்படி உணர்கிறீர்கள்?",
   "encounter.subheading": "பேசுங்கள் அல்லது தட்டுங்கள்.",

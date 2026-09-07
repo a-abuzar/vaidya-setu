@@ -2,18 +2,18 @@
 
 /**
  * Common layout shell for every patient-facing screen after the
- * welcome screen. Renders:
+ * welcome screen.
  *
- *   - Persistent top bar (Back / Home / Help)
+ * Renders:
+ *   - Persistent top bar (Back / Home / A11y controls / Language / Help)
  *   - Step indicator
- *   - The screen body, with reserved space at the bottom for the
- *     AccessibilityBar so content never hides under it
+ *   - Screen body
  *
- * The shell is intentionally layout-only — it has no business logic
- * so screens stay pure and easy to diff.
+ * Accessibility controls (text size, contrast, audio) now live inside
+ * KioskTopBar. The former fixed-bottom AccessibilityBar has been removed.
+ * Bottom of screen is reserved for the screen's own primary action buttons.
  */
 import type { ReactNode } from "react";
-import { AccessibilityBar } from "@/components/kiosk/AccessibilityBar";
 import { KioskTopBar } from "@/components/kiosk/KioskTopBar";
 import { StepIndicator, type KioskStepKey } from "@/components/kiosk/StepIndicator";
 
@@ -27,7 +27,7 @@ export function KioskShell({
   showStep?: boolean;
 }): React.ReactElement {
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-32">
+    <div className="flex min-h-screen flex-col bg-background pb-8">
       <KioskTopBar />
       {showStep ? (
         <div className="mx-auto w-full max-w-5xl px-4 pt-4">
@@ -37,7 +37,6 @@ export function KioskShell({
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6">
         {children}
       </main>
-      <AccessibilityBar />
     </div>
   );
 }

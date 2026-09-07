@@ -249,7 +249,7 @@ export default function SessionDetailPage(): React.ReactElement {
   if (loading) {
     return (
       <>
-        <DoctorTopBar active="session" />
+        <DoctorTopBar active="session" sessionId={sessionId} />
         <main className="mx-auto flex max-w-6xl items-center justify-center gap-3 px-4 py-24 text-muted-foreground">
           <Loader2 className="size-5 animate-spin" aria-hidden="true" />
           Loading session…
@@ -260,14 +260,14 @@ export default function SessionDetailPage(): React.ReactElement {
   if (error || !detail) {
     return (
       <>
-        <DoctorTopBar active="session" />
+        <DoctorTopBar active="session" sessionId={sessionId} />
         <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-12">
           <Link
             href="/doctor/dashboard"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--primary-mid)]"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
-            Back to dashboard
+            Back to queue
           </Link>
           <Card className="border-destructive bg-destructive/5 p-6 text-destructive">
             {error ?? "Session not found"}
@@ -279,19 +279,11 @@ export default function SessionDetailPage(): React.ReactElement {
 
   return (
     <>
-      <DoctorTopBar active="session" />
+      <DoctorTopBar active="session" sessionId={sessionId} />
       <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-8">
-        <div>
-          <Link
-            href="/doctor/dashboard"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
-          >
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            Back to dashboard
-          </Link>
-        </div>
 
-        <header className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        {/* Session header */}
+        <header className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-start">
           <div>
             <div className="flex flex-wrap items-center gap-2">
               {detail.redFlag ? (
@@ -299,12 +291,7 @@ export default function SessionDetailPage(): React.ReactElement {
                   <AlertTriangle className="size-3" aria-hidden="true" />
                   Red flag
                 </Badge>
-              ) : (
-                <Badge variant="success" className="gap-1">
-                  <CheckCircle2 className="size-3" aria-hidden="true" />
-                  Routine
-                </Badge>
-              )}
+              ) : null}
               <Badge variant="outline" className="capitalize">
                 {detail.status.replace("_", " ")}
               </Badge>
@@ -313,12 +300,13 @@ export default function SessionDetailPage(): React.ReactElement {
               {detail.summary.chiefComplaint || "No chief complaint"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Session {detail.id.slice(0, 8)} • Patient {detail.patientId.slice(0, 8)} •
-              {" "}
-              {new Date(detail.startedAt).toLocaleString()}
+              Patient {detail.patientId.slice(0, 8)} •{" "}
+              {new Date(detail.startedAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+
+          {/* Actions — Approve is primary; Edit and FHIR push are secondary */}
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             {editing ? (
               <>
                 <Button
@@ -335,11 +323,11 @@ export default function SessionDetailPage(): React.ReactElement {
                 </Button>
                 <Button
                   type="button"
+                  className="gap-2 bg-primary text-primary-foreground hover:bg-[var(--primary-mid)]"
                   onClick={() => void onSaveEdit()}
-                  className="gap-2"
                 >
                   <Save className="size-4" aria-hidden="true" />
-                  Save
+                  Save changes
                 </Button>
               </>
             ) : (
@@ -367,10 +355,11 @@ export default function SessionDetailPage(): React.ReactElement {
                   )}
                   Push to FHIR
                 </Button>
+                {/* Approve is the primary CTA */}
                 <Button
                   type="button"
+                  className="gap-2 bg-success text-success-foreground hover:bg-success/90 shadow-sm"
                   onClick={() => void onApprove()}
-                  className="gap-2"
                 >
                   <CheckCircle2 className="size-4" aria-hidden="true" />
                   Approve
@@ -448,14 +437,7 @@ export default function SessionDetailPage(): React.ReactElement {
               </div>
               <div>
                 <Card className="p-4">
-                  <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                    Patient demographics
-                  </p>
-                  <p className="text-sm">
-                    Anonymous kiosk visit
-                  </p>
-                  <Separator />
-                  <p className="mt-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Summary status
                   </p>
                   <p className="text-sm">
@@ -606,8 +588,8 @@ function Section({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <div className="mb-4">
-      <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+    <div className="mb-5 border-l-4 border-[var(--primary-accent)] pl-3">
+      <h3 className="mb-1.5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
         {title}
       </h3>
       {children}

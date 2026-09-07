@@ -62,7 +62,7 @@ const anonSessionSchema = z.object({
   preferredLanguage: z.enum(["en", "hi", "ta"]),
   consent: ConsentCapturePayloadSchema.optional(),
   patientInfo: z.object({
-    name: z.string(),
+    name: z.string().optional(),
     age: z.string(),
     gender: z.string(),
   }).nullable().optional(),
