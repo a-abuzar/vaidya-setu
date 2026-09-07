@@ -20,11 +20,13 @@ import {
   CheckCircle2,
   Loader2,
   Activity,
+  Keyboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { KioskShell } from "@/components/kiosk/KioskShell";
+import { VirtualKeyboard } from "@/components/kiosk/VirtualKeyboard";
 import { useKioskUi } from "@/lib/store/kiosk-ui";
 import { useSessionStore, type TranscriptEntry } from "@/lib/store/session";
 import { useConsentStore } from "@/lib/store/consent";
@@ -48,14 +50,14 @@ interface TriageData {
   languageUsed?: "en" | "hi" | "ta" | null;
 }
 
-const FALLBACK_TOUCH_OPTIONS: TouchOption[] = [
-  { id: "yes", label: "हाँ / Yes" },
-  { id: "no", label: "नहीं / No" },
-  { id: "pain", label: "दर्द / Pain" },
-  { id: "fever", label: "बुखार / Fever" },
-  { id: "cough", label: "खांसी / Cough" },
-  { id: "other", label: "अन्य / Other" },
-];
+const FALLBACK_OPTION_IDS = ["yes", "no", "pain", "fever", "cough", "other"] as const;
+
+function getFallbackOptions(lang: "en" | "hi" | "ta"): TouchOption[] {
+  return FALLBACK_OPTION_IDS.map((id) => ({
+    id,
+    label: t(lang, `encounter.option.${id}`),
+  }));
+}
 
 const INITIAL_QUESTION: Record<"hi" | "en" | "ta", string> = {
   hi: "नमस्ते। आज आप कैसा महसूस कर रहे हैं?",
@@ -91,9 +93,56 @@ export default function EncounterPage(): React.ReactElement {
   } = useSessionStore();
 
   const [pendingUtterance, setPendingUtterance] = useState<string | null>(null);
-  const [touchOptions, setTouchOptions] = useState<TouchOption[]>(FALLBACK_TOUCH_OPTIONS);
+  const [touchOptions, setTouchOptions] = useState<TouchOption[]>(() => getFallbackOptions(language));
   const [bootstrap, setBootstrap] = useState<SessionBootstrap>({ status: "idle" });
+  const [isKeyboardMode, setIsKeyboardMode] = useState(false);
+  const [keyboardValue, setKeyboardValue] = useState("");
   const initLockRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const onVirtualKey = useCallback((key: string) => {
+    if (!inputRef.current) {
+      setKeyboardValue((prev) => key === "Backspace" ? prev.slice(0, -1) : prev + key);
+      return;
+    }
+    const el = inputRef.current;
+    const start = el.selectionStart ?? keyboardValue.length;
+    const end = el.selectionEnd ?? keyboardValue.length;
+
+    let newVal = keyboardValue;
+    let newPos = start;
+
+    if (key === "Backspace") {
+      if (start === end && start > 0) {
+        newVal = keyboardValue.slice(0, start - 1) + keyboardValue.slice(end);
+        newPos = start - 1;
+      } else if (start !== end) {
+        newVal = keyboardValue.slice(0, start) + keyboardValue.slice(end);
+        newPos = start;
+      }
+    } else {
+      newVal = keyboardValue.slice(0, start) + key + keyboardValue.slice(end);
+      newPos = start + key.length;
+    }
+
+    setKeyboardValue(newVal);
+    
+    // Defer setting selection to allow React to update the DOM value first
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(newPos, newPos);
+    }, 0);
+  }, [keyboardValue]);
+
+  useEffect(() => {
+    setTouchOptions((prev) => {
+      const isFallback = prev.length === FALLBACK_OPTION_IDS.length && prev.every((p, i) => p.id === FALLBACK_OPTION_IDS[i]);
+      if (isFallback) {
+        return getFallbackOptions(language);
+      }
+      return prev;
+    });
+  }, [language]);
 
   useEffect(() => {
     if (initLockRef.current) return;
@@ -200,7 +249,7 @@ export default function EncounterPage(): React.ReactElement {
             timestamp: new Date().toISOString(),
           });
         }
-        setTouchOptions(FALLBACK_TOUCH_OPTIONS);
+        setTouchOptions(getFallbackOptions(language));
 
         const sid = useSessionStore.getState().sessionId;
         if (sid) {
@@ -409,21 +458,73 @@ export default function EncounterPage(): React.ReactElement {
           />
           <Separator />
           <div className="w-full">
-            <p className="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-              {t(language, "encounter.optionsTitle")}
-            </p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {touchOptions.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => onPickOption(opt)}
-                  className="min-h-12 rounded-xl border border-border bg-background px-3 py-2 text-base font-medium transition-colors hover:border-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                >
-                  {opt.label}
-                </button>
-              ))}
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                {isKeyboardMode ? t(language, "encounter.keyboardTitle") : t(language, "encounter.optionsTitle")}
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-xs uppercase text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setIsKeyboardMode(!isKeyboardMode);
+                  setKeyboardValue("");
+                }}
+              >
+                {isKeyboardMode ? t(language, "nav.cancel") : (
+                  <>
+                    <Keyboard className="mr-2 size-4" />
+                    {t(language, "encounter.typeAnswer")}
+                  </>
+                )}
+              </Button>
             </div>
+            {isKeyboardMode ? (
+              <div className="flex flex-col gap-3">
+                <div className="flex gap-2">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    inputMode="none"
+                    value={keyboardValue}
+                    onChange={(e) => setKeyboardValue(e.target.value)}
+                    autoFocus
+                    className="flex h-12 w-full rounded-xl border border-input bg-background px-4 py-2 text-lg ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    placeholder={t(language, "encounter.placeholder")}
+                  />
+                  <Button
+                    type="button"
+                    size="lg"
+                    className="h-12 rounded-xl px-8"
+                    disabled={keyboardValue.trim().length === 0 || isProcessing}
+                    onClick={() => {
+                      if (keyboardValue.trim()) {
+                        setPendingUtterance(keyboardValue.trim());
+                        setKeyboardValue("");
+                        setIsKeyboardMode(false);
+                      }
+                    }}
+                  >
+                    {t(language, "encounter.submit")}
+                  </Button>
+                </div>
+                <VirtualKeyboard onKeyPress={onVirtualKey} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {touchOptions.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => onPickOption(opt)}
+                    className="min-h-12 rounded-xl border border-border bg-background px-3 py-2 text-base font-medium transition-colors hover:border-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </section>
       )}

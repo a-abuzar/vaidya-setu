@@ -63,7 +63,9 @@ export async function evaluateTriage(transcript: string, language: string = "en"
 Your tasks are:
 (a) Detect emergency red-flag symptoms (dyspnoea, chest pain with radiation, severe bleeding). If found, set redFlag to true and provide a redFlagReason.
 (b) If the complaint involves pain, apply the SOCRATES assessment method. Identify which fields are still unanswered. You must only use these exact string values for the array: "site", "onset", "character", "radiation", "associations", "timeCourse", "exacerbatingRelieving", "severity". If no pain is involved or all fields are answered, return an empty array [].
-(c) Formulate exactly one targeted follow-up question for the missing field. IMPORTANT: Detect the language of the patient's most recent response. Write this nextQuestion in that SAME language. If you cannot determine the language, default to the language code: ${language} (en=English, hi=Hindi/Hinglish, ta=Tamil/Tanglish). Also provide the language code you used in 'languageUsed'.
+(c) Conduct a comprehensive medical interview progressing through these stages: Chief Complaint, History of Present Illness (HPI), Past Medical History, Drug/Allergy History, Family History, Personal History, and Review of Systems.
+(d) Formulate exactly ONE targeted follow-up question to gather the next piece of missing information for the current stage. Do not ask multiple questions at once. If all stages are complete, set nextQuestion to null to end the interview.
+(e) IMPORTANT: Detect the language of the patient's most recent response. Write this nextQuestion in that SAME language. If you cannot determine the language, default to the language code: ${language} (en=English, hi=Hindi/Hinglish, ta=Tamil/Tanglish). Also provide the language code you used in 'languageUsed'.
 
 You MUST respond with valid JSON ONLY, strictly conforming to this schema:
 {
