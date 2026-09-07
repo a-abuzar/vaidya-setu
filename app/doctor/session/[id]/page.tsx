@@ -101,6 +101,40 @@ const DOC_TYPE_ICON: Record<SessionDetail["documents"][number]["docType"], React
   imaging: <ScanLine className="size-5" aria-hidden="true" />,
 };
 
+function formatSummaryField(value: string | null | undefined): React.ReactNode {
+  if (!value || value === "[]" || value === "{}") return "—";
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) {
+      if (parsed.length === 0) return "—";
+      return (
+        <ul className="list-inside list-disc">
+          {parsed.map((item, i) => (
+            <li key={i}>{String(item)}</li>
+          ))}
+        </ul>
+      );
+    }
+    if (typeof parsed === "object" && parsed !== null) {
+      const keys = Object.keys(parsed);
+      if (keys.length === 0) return "—";
+      return (
+        <ul className="list-inside list-disc">
+          {keys.map((key) => (
+            <li key={key}>
+              <span className="font-semibold capitalize">{key.replace(/([A-Z])/g, " $1")}:</span>{" "}
+              {String(parsed[key])}
+            </li>
+          ))}
+        </ul>
+      );
+    }
+  } catch {
+    // ignore
+  }
+  return value;
+}
+
 export default function SessionDetailPage(): React.ReactElement {
   const params = useParams<{ id: string }>();
   const sessionId = params?.id ?? "";
@@ -386,10 +420,14 @@ export default function SessionDetailPage(): React.ReactElement {
                   <p className="whitespace-pre-wrap text-sm leading-relaxed">{detail.summary.hpi || "—"}</p>
                 </Section>
                 <Section title="Past History">
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{detail.summary.pastHistory || "—"}</p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {formatSummaryField(detail.summary.pastHistory)}
+                  </p>
                 </Section>
                 <Section title="Drug & Allergy History">
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{detail.summary.drugAllergyHistory || "—"}</p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {formatSummaryField(detail.summary.drugAllergyHistory)}
+                  </p>
                 </Section>
                 <Section title="Family History">
                   <p className="whitespace-pre-wrap text-sm leading-relaxed">{detail.summary.familyHistory || "—"}</p>
@@ -398,10 +436,14 @@ export default function SessionDetailPage(): React.ReactElement {
                   <p className="whitespace-pre-wrap text-sm leading-relaxed">{detail.summary.personalHistory || "—"}</p>
                 </Section>
                 <Section title="Review of Systems">
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{detail.summary.ros || "—"}</p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {formatSummaryField(detail.summary.ros)}
+                  </p>
                 </Section>
                 <Section title="Prior Investigations">
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{detail.summary.priorInvestigations || "—"}</p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {formatSummaryField(detail.summary.priorInvestigations)}
+                  </p>
                 </Section>
               </div>
               <div>

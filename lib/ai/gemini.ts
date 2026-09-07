@@ -84,3 +84,84 @@ Do not include markdown blocks or any other text.`;
     },
   };
 }
+
+export const SummaryLLMOutputSchema = z.object({
+  chiefComplaint: z.string(),
+  hpiNarrative: z.string(),
+  pastHistory: z.array(z.string()),
+  drugAllergyHistory: z.array(z.string()),
+  familyHistory: z.string(),
+  personalHistory: z.string(),
+  reviewOfSystems: z.record(z.string(), z.string()),
+  priorInvestigations: z.array(z.string()),
+  ayushAssessment: z.object({
+    prakriti: z.string().nullable(),
+    vikriti: z.string().nullable(),
+    agni: z.string().nullable(),
+    koshtha: z.string().nullable(),
+    aharaVihara: z.string().nullable(),
+    nidana: z.string().nullable(),
+    samprapti: z.string().nullable(),
+  }).nullable(),
+});
+export type SummaryLLMOutput = z.infer<typeof SummaryLLMOutputSchema>;
+
+export async function generateSummaryGemini(
+  transcriptText: string,
+  includeAyush: boolean
+): Promise<Result<SummaryLLMOutput>> {
+  const systemPrompt = `You are a medical AI summarizing a clinical encounter for a doctor's dashboard.
+You are given the full transcript of a patient kiosk interview.
+Your task is to synthesize this into a structured clinical summary.
+Extract and categorize information into the following fields:
+- chiefComplaint: A single short sentence (e.g., "Fever and cough for 3 days").
+- hpiNarrative: A detailed paragraph describing the History of Present Illness (SOCRATES details if applicable).
+- pastHistory: An array of strings describing any past medical conditions.
+- drugAllergyHistory: An array of strings describing current medications or allergies.
+- familyHistory: A string summarizing family medical history.
+- personalHistory: A string summarizing lifestyle (smoking, diet, etc.).
+- reviewOfSystems: A key-value object of positive/negative findings by system (e.g. {"respiratory": "cough present, no wheeze"}).
+- priorInvestigations: An array of strings listing any tests the patient mentioned they have taken.
+${includeAyush ? `- ayushAssessment: An object with string fields: prakriti, vikriti, agni, koshtha, aharaVihara, nidana, samprapti. Estimate based on symptoms if possible, or leave null.` : `- ayushAssessment: null`}
+
+You MUST respond with valid JSON ONLY, strictly conforming to the requested schema. Do not include markdown formatting or extra text.`;
+
+  let attempt = 0;
+  let validationError = "";
+  const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash", generationConfig: { responseMimeType: "application/json" } });
+
+  while (attempt < 2) {
+    attempt++;
+    const userPrompt = validationError
+      ? `Transcript:\n${transcriptText}\n\nYour previous response failed validation with the following error:\n${validationError}\n\nPlease correct your response to strictly match the JSON schema.`
+      : `Transcript:\n${transcriptText}`;
+
+    try {
+      const result = await model.generateContent([
+        { text: systemPrompt },
+        { text: userPrompt },
+      ]);
+      const content = result.response.text();
+      const parsed = JSON.parse(content);
+      const validated = SummaryLLMOutputSchema.safeParse(parsed);
+
+      if (validated.success) {
+        return { success: true, data: validated.data };
+      } else {
+        validationError = validated.error.message;
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Unknown error";
+      return { success: false, error: { code: "GEMINI_NETWORK_ERROR", message: msg, retryable: true } };
+    }
+  }
+
+  return {
+    success: false,
+    error: {
+      code: "ESCALATE_TO_STAFF",
+      message: "AI summary failed validation repeatedly.",
+      retryable: false,
+    },
+  };
+}

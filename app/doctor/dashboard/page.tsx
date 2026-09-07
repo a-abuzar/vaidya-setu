@@ -127,8 +127,7 @@ export default function DoctorDashboardPage(): React.ReactElement {
           </Card>
         ) : null}
 
-        <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-bold">Sessions</h2>
+        <section className="flex flex-col gap-8">
           {loading ? (
             <Card className="flex items-center gap-3 p-6 text-muted-foreground">
               <Loader2 className="size-5 animate-spin" aria-hidden="true" />
@@ -139,13 +138,41 @@ export default function DoctorDashboardPage(): React.ReactElement {
               No sessions yet. As patients use the kiosk, their sessions appear here.
             </Card>
           ) : (
-            <ul className="flex flex-col gap-3">
-              {sessions.map((s) => (
-                <li key={s.id}>
-                  <SessionCard session={s} />
-                </li>
-              ))}
-            </ul>
+            <>
+              <div className="flex flex-col gap-3">
+                <h2 className="text-lg font-bold">Awaiting Review</h2>
+                {review.length === 0 ? (
+                  <Card className="p-6 text-center text-sm text-muted-foreground">
+                    No sessions awaiting review.
+                  </Card>
+                ) : (
+                  <ul className="flex flex-col gap-3">
+                    {review.map((s) => (
+                      <li key={s.id}>
+                        <SessionCard session={s} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <h2 className="text-lg font-bold text-muted-foreground">Currently at Kiosk</h2>
+                {inProgress.length === 0 ? (
+                  <Card className="p-6 text-center text-sm text-muted-foreground">
+                    No active sessions at the kiosk.
+                  </Card>
+                ) : (
+                  <ul className="flex flex-col gap-3">
+                    {inProgress.map((s) => (
+                      <li key={s.id} className="opacity-75 grayscale transition-all hover:grayscale-0">
+                        <SessionCard session={s} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </>
           )}
         </section>
       </main>

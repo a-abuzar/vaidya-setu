@@ -8,9 +8,13 @@ import { Button } from "@/components/ui/button";
 export function HoldToSpeak({
   onTranscript,
   disabled = false,
+  className = "",
+  iconSize = 48,
 }: {
   onTranscript: (text: string) => void;
   disabled?: boolean;
+  className?: string;
+  iconSize?: number;
 }) {
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
@@ -142,7 +146,7 @@ export function HoldToSpeak({
   };
 
   return (
-    <div className="relative flex flex-col items-center justify-center">
+    <div className={`relative flex flex-col items-center justify-center ${className}`}>
       {/* Animated audio ripples when recording */}
       {isRecording && (
         <>
@@ -155,8 +159,9 @@ export function HoldToSpeak({
       <Button
         size="lg"
         variant={isRecording ? "destructive" : "default"}
-        className={`w-32 h-32 rounded-full flex flex-col items-center justify-center shadow-2xl transition-all duration-300 touch-none select-none relative z-10 
-          ${isRecording ? "scale-110 shadow-red-500/50 bg-red-500" : "hover:scale-105 bg-teal-600 hover:bg-teal-700 shadow-teal-500/30"}`}
+        className={`w-full h-full min-w-16 min-h-16 rounded-full flex flex-col items-center justify-center shadow-2xl transition-all duration-300 touch-none select-none relative z-10 
+          ${isRecording ? "scale-110 shadow-red-500/50 bg-red-500" : "hover:scale-105 bg-teal-600 hover:bg-teal-700 shadow-teal-500/30"}
+          ${!className ? "w-32 h-32" : ""}`}
         onPointerDown={startRecording}
         onPointerUp={stopRecording}
         onPointerLeave={stopRecording}
@@ -166,7 +171,7 @@ export function HoldToSpeak({
       >
         {isRecording ? (
           <div className="flex flex-col items-center gap-2">
-            <Mic size={40} className="animate-pulse" />
+            <Mic size={iconSize * 0.83} className="animate-pulse" />
             <div className="flex gap-1 h-3">
               <div className="w-1 bg-white rounded-full animate-[bounce_1s_infinite]" />
               <div className="w-1 bg-white rounded-full animate-[bounce_1s_infinite_0.2s]" />
@@ -174,12 +179,14 @@ export function HoldToSpeak({
             </div>
           </div>
         ) : (
-          <Mic size={48} className="text-white" />
+          <Mic size={iconSize} className="text-white" />
         )}
       </Button>
-      <span className={`mt-6 text-xl font-bold tracking-wide transition-colors duration-300 ${isRecording ? 'text-red-500' : 'text-teal-600'}`}>
-        {isRecording ? "Listening... (Release to send)" : "Hold to Speak"}
-      </span>
+      {!className && (
+        <span className={`mt-6 text-xl font-bold tracking-wide transition-colors duration-300 ${isRecording ? 'text-red-500' : 'text-teal-600'}`}>
+          {isRecording ? "Listening... (Release to send)" : "Hold to Speak"}
+        </span>
+      )}
     </div>
   );
 }

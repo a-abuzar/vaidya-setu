@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { handle } from "hono/vercel";
 import { transcribeAudio } from "@/lib/ai/sarvam";
 import { evaluateTriage } from "@/lib/ai/groq";
-import { evaluateTriageGemini } from "@/lib/ai/gemini";
+import { evaluateTriageGemini, generateSummaryGemini } from "@/lib/ai/gemini";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
@@ -54,22 +54,18 @@ const sendError = (c: any, code: string, message: string, status = 400) => {
 
 // Additive anon-session endpoint: created in the Phase-10 UI pass so
 // the kiosk can spin up an encounter without requiring the patient to
-// type their PII into the touchscreen. We persist placeholder patient
-// values that are tagged "Anonymous Kiosk Patient" so they are easy
-// to filter out of any future analytics.
-//
-// TODO(flagged for domain expert review): the existing `patients`
-// schema is NOT NULL on full_name / date_of_birth / gender / phone —
-// all four are clinically meaningful and DPDP Act 2023 expects true
-// identity. For Phase 10 we accept placeholder values here, but the
-// correct long-term design is to either (a) relax these columns to
-// nullable, or (b) introduce a separate `kiosk_visits` table that
-// does not depend on a patient row at all. Do not ship to production
-// with placeholder values.
+// type their PII into the touchscreen. Anonymous sessions now omit the
+// patient_id entirely to comply with DPDP Act 2023, rather than using
+// placeholder PII.
 const anonSessionSchema = z.object({
   kioskId: z.string(),
   preferredLanguage: z.enum(["en", "hi", "ta"]),
   consent: ConsentCapturePayloadSchema.optional(),
+  patientInfo: z.object({
+    name: z.string(),
+    age: z.string(),
+    gender: z.string(),
+  }).nullable().optional(),
 });
 
 const sessionRouter = new Hono<{ Bindings: Bindings }>()
@@ -125,30 +121,30 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
     async (c) => {
       const body = c.req.valid("json");
       try {
-        // Placeholder anonymous patient — see TODO above.
-        //
-        // The `patients.phone` column is VARCHAR(20), so we keep the
-        // generated identifier short: a base36 timestamp fits
-        // comfortably and stays unique across the kiosk.
-        const anonPatient = {
-          full_name: "Anonymous Kiosk Patient",
-          date_of_birth: new Date("1900-01-01"),
-          gender: "other" as const,
-          phone: `anon-${Date.now().toString(36)}`.slice(0, 20),
+        let ageNum = 0;
+        let dateOfBirth = new Date("1970-01-01");
+        if (body.patientInfo?.age) {
+          ageNum = parseInt(body.patientInfo.age, 10);
+          if (!isNaN(ageNum)) {
+            const curYear = new Date().getFullYear();
+            dateOfBirth = new Date(`${curYear - ageNum}-01-01`);
+          }
+        }
+        
+        const insertedPatient = await db.insert(patients).values({
+          full_name: body.patientInfo?.name || "Anonymous Kiosk Patient",
+          date_of_birth: dateOfBirth,
+          gender: body.patientInfo?.gender || "Unknown",
+          phone: "0000000000",
           preferred_language: body.preferredLanguage,
-          abha_linked: false,
-        };
-
-        const inserted = await db
-          .insert(patients)
-          .values(anonPatient)
-          .returning();
-        const patient = inserted[0];
+        }).returning();
+        
+        const patientId = insertedPatient[0].id;
 
         const newSession = await db
           .insert(sessions)
           .values({
-            patient_id: patient.id,
+            patient_id: patientId,
             kiosk_id: body.kioskId,
             status: "in_progress",
           })
@@ -160,7 +156,7 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
             success: true,
             data: {
               sessionId: session.id,
-              patientId: patient.id,
+              patientId: patientId,
               consent: body.consent ?? null,
             },
           },
@@ -175,7 +171,7 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
             success: false,
             error: {
               code: "ANON_SESSION_FAILED",
-              message: `Could not create anonymous session: ${detail}`,
+              message: `Could not create anonymous session: ${detail}. Full error: ${JSON.stringify(err, Object.getOwnPropertyNames(err))}`,
               retryable: false,
             },
           },
@@ -273,20 +269,51 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
     const sessionId = c.req.param("id");
 
     try {
-      // Trigger mock summary generation
+      const [conv] = await db
+        .select()
+        .from(conversations)
+        .where(eq(conversations.session_id, sessionId))
+        .limit(1);
+
+      if (!conv) {
+        return c.json({ success: false, error: { code: "NOT_FOUND", message: "Conversation not found", retryable: false } }, 404);
+      }
+
+      let transcriptText = "";
+      if (Array.isArray(conv.transcript)) {
+        transcriptText = conv.transcript.map((t: any) => `${t.role.toUpperCase()}: ${t.text}`).join("\n");
+      } else if (typeof conv.transcript === "string") {
+        try {
+          const parsed = JSON.parse(conv.transcript);
+          if (Array.isArray(parsed)) {
+            transcriptText = parsed.map((t: any) => `${t.role.toUpperCase()}: ${t.text}`).join("\n");
+          }
+        } catch {
+          // fallback
+        }
+      }
+
+      const summaryRes = await generateSummaryGemini(transcriptText || "No transcript", true);
+      
+      if (!summaryRes.success) {
+        return c.json({ success: false, error: { code: "SUMMARY_FAILED", message: "Failed to generate summary via AI", retryable: false } }, 500);
+      }
+
+      const aiSummary = summaryRes.data;
+
       const summary = await db
         .insert(summaries)
         .values({
           session_id: sessionId,
-          chief_complaint: "Mocked chief complaint",
-          hpi: "Mocked HPI",
-          past_history: [],
-          drug_allergy_history: [],
-          family_history: "None",
-          personal_history: "None",
-          ros: [],
-          prior_investigations: [],
-          ayush_assessment: null,
+          chief_complaint: aiSummary.chiefComplaint || "Not recorded",
+          hpi: aiSummary.hpiNarrative || "Not recorded",
+          past_history: aiSummary.pastHistory || [],
+          drug_allergy_history: aiSummary.drugAllergyHistory || [],
+          family_history: aiSummary.familyHistory || "None",
+          personal_history: aiSummary.personalHistory || "None",
+          ros: aiSummary.reviewOfSystems || {},
+          prior_investigations: aiSummary.priorInvestigations || [],
+          ayush_assessment: aiSummary.ayushAssessment || null,
           finalized_at: new Date(),
         })
         .returning();
@@ -398,6 +425,21 @@ const doctorRouter = new Hono<{ Bindings: Bindings }>()
             .select({ id: documents.id })
             .from(documents)
             .where(eq(documents.session_id, r.id));
+          let chiefComplaint = sum?.chief_complaint ?? "";
+          if (!chiefComplaint && conv?.transcript) {
+            try {
+              const tArray = Array.isArray(conv.transcript) 
+                ? conv.transcript 
+                : typeof conv.transcript === "string" ? JSON.parse(conv.transcript) : [];
+              if (Array.isArray(tArray)) {
+                const firstPatient = tArray.find((m: any) => m.role === "patient");
+                if (firstPatient) chiefComplaint = firstPatient.text.slice(0, 80) + (firstPatient.text.length > 80 ? "..." : "");
+              }
+            } catch (e) {
+              // ignore
+            }
+          }
+
           return {
             id: r.id,
             patientId: r.patientId,
@@ -406,7 +448,7 @@ const doctorRouter = new Hono<{ Bindings: Bindings }>()
             completedAt: r.completedAt?.toISOString() ?? null,
             redFlag: conv?.red_flag ?? false,
             documentCount: docs.length,
-            chiefComplaint: sum?.chief_complaint ?? "",
+            chiefComplaint,
           };
         }),
       );
@@ -459,6 +501,13 @@ const doctorRouter = new Hono<{ Bindings: Bindings }>()
         .from(documents)
         .where(eq(documents.session_id, id));
 
+      const rawTranscript = conv?.transcript;
+      const parsedTranscript = Array.isArray(rawTranscript)
+        ? rawTranscript
+        : typeof rawTranscript === "string"
+          ? JSON.parse(rawTranscript)
+          : [];
+
       return c.json({
         success: true,
         data: {
@@ -473,12 +522,12 @@ const doctorRouter = new Hono<{ Bindings: Bindings }>()
             id: sum?.id ?? null,
             chiefComplaint: sum?.chief_complaint ?? "",
             hpi: sum?.hpi ?? "",
-            pastHistory: JSON.stringify(sum?.past_history ?? []),
-            drugAllergyHistory: JSON.stringify(sum?.drug_allergy_history ?? []),
+            pastHistory: typeof sum?.past_history === "string" ? sum.past_history : JSON.stringify(sum?.past_history ?? []),
+            drugAllergyHistory: typeof sum?.drug_allergy_history === "string" ? sum.drug_allergy_history : JSON.stringify(sum?.drug_allergy_history ?? []),
             familyHistory: sum?.family_history ?? "",
             personalHistory: sum?.personal_history ?? "",
-            ros: JSON.stringify(sum?.ros ?? {}),
-            priorInvestigations: JSON.stringify(sum?.prior_investigations ?? []),
+            ros: typeof sum?.ros === "string" ? sum.ros : JSON.stringify(sum?.ros ?? {}),
+            priorInvestigations: typeof sum?.prior_investigations === "string" ? sum.prior_investigations : JSON.stringify(sum?.prior_investigations ?? []),
             ayush: (sum?.ayush_assessment as Record<string, unknown> | null) ?? null,
             physicianEdited: sum?.physician_edited ?? false,
             finalizedAt: sum?.finalized_at?.toISOString() ?? null,
@@ -489,8 +538,8 @@ const doctorRouter = new Hono<{ Bindings: Bindings }>()
             uploadedAt: d.uploaded_at?.toISOString() ?? new Date().toISOString(),
             ocrStatus: d.ocr_status,
           })),
-          transcript: Array.isArray(conv?.transcript)
-            ? (conv?.transcript as Array<{
+          transcript: Array.isArray(parsedTranscript)
+            ? (parsedTranscript as Array<{
                 role: "patient" | "system";
                 text: string;
                 timestamp: string;

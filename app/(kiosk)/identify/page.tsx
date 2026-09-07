@@ -52,7 +52,7 @@ export default function IdentifyPage(): React.ReactElement {
 
   const onChooseAnon = (): void => {
     toast.success(t(language, "identify.skipSuccess"));
-    router.push("/encounter");
+    router.push("/basic-info");
   };
 
   const onSubmitLink = async (): Promise<void> => {
@@ -65,7 +65,7 @@ export default function IdentifyPage(): React.ReactElement {
       toast.warning(t(language, "identify.notImplemented"), {
         duration: 4000,
       });
-      router.push("/encounter");
+      router.push("/basic-info");
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : "Unknown error";

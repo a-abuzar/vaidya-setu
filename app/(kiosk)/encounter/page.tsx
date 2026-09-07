@@ -162,6 +162,7 @@ export default function EncounterPage(): React.ReactElement {
             kioskId: "kiosk-001",
             preferredLanguage: language,
             consent: useConsentStore.getState(),
+            patientInfo: useSessionStore.getState().patientInfo,
           }),
         });
         if (!res.ok) {
@@ -169,7 +170,7 @@ export default function EncounterPage(): React.ReactElement {
           throw new Error(`HTTP ${res.status}: ${text}`);
         }
         const payload = (await res.json()) as
-          | { success: true; data: { sessionId: string; patientId: string } }
+          | { success: true; data: { sessionId: string; patientId: string | null } }
           | { success: false; error: { code: string; message: string } };
         if (!payload.success) {
           throw new Error(payload.error.message);

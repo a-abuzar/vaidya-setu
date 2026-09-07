@@ -51,8 +51,7 @@ export const sessions = pgTable("sessions", {
   // Justification: Medical records are highly regulated. Deleting a patient should not implicitly 
   // and silently cascade to delete clinical encounters. An explicit cleanup/anonymization routine is required.
   patient_id: uuid("patient_id")
-    .references(() => patients.id, { onDelete: "restrict" })
-    .notNull(),
+    .references(() => patients.id, { onDelete: "restrict" }),
   kiosk_id: text("kiosk_id").notNull(),
   status: sessionStatusEnum("status").notNull(),
   started_at: timestamp("started_at").defaultNow().notNull(),

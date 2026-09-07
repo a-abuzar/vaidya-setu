@@ -15,6 +15,7 @@ type InterviewStage = "chief_complaint" | "hpi" | "past_history" | "drug_allergy
 interface SessionState {
   sessionId: SessionId | null;
   patientId: PatientId | null;
+  patientInfo: { name: string; age: string; gender: string } | null;
   language: SupportedLanguage;
   currentStage: InterviewStage;
   transcript: TranscriptEntry[];
@@ -37,7 +38,7 @@ interface OfflineMutation {
 }
 
 interface SessionActions {
-  startSession: (sessionId: SessionId, patientId: PatientId, language: SupportedLanguage) => void;
+  startSession: (sessionId: SessionId, patientId: PatientId | null, language: SupportedLanguage) => void;
   resetSession: () => void;
   setStage: (stage: InterviewStage) => void;
   addTranscriptEntry: (entry: TranscriptEntry) => void;
@@ -48,6 +49,7 @@ interface SessionActions {
   addUploadedDocument: (documentId: string) => void;
   setRedFlag: (detected: boolean, reason: string | null) => void;
   setAyushMode: (enabled: boolean) => void;
+  setPatientInfo: (info: { name: string; age: string; gender: string } | null) => void;
   queueOfflineMutation: (mutation: Omit<OfflineMutation, "id" | "timestamp">) => Promise<void>;
   syncOfflineQueue: () => Promise<void>;
 }
@@ -55,6 +57,7 @@ interface SessionActions {
 const initialState: SessionState = {
   sessionId: null,
   patientId: null,
+  patientInfo: null,
   language: "hi",
   currentStage: "chief_complaint",
   transcript: [],
@@ -81,6 +84,7 @@ export const useSessionStore = create<SessionState & SessionActions>()((set, get
   addUploadedDocument: (documentId) => set((state) => ({ uploadedDocumentIds: [...state.uploadedDocumentIds, documentId] })),
   setRedFlag: (detected, reason) => set({ redFlagDetected: detected, redFlagReason: reason }),
   setAyushMode: (enabled) => set({ ayushModeEnabled: enabled }),
+  setPatientInfo: (info) => set({ patientInfo: info }),
   queueOfflineMutation: async (mutation) => {
     const newMutation: OfflineMutation = {
       ...mutation,
