@@ -15,7 +15,7 @@ type InterviewStage = "chief_complaint" | "hpi" | "past_history" | "drug_allergy
 interface SessionState {
   sessionId: SessionId | null;
   patientId: PatientId | null;
-  patientInfo: { name: string; age: string; gender: string } | null;
+  patientInfo: { age: string; gender: string } | null;
   language: SupportedLanguage;
   currentStage: InterviewStage;
   transcript: TranscriptEntry[];
@@ -49,7 +49,7 @@ interface SessionActions {
   addUploadedDocument: (documentId: string) => void;
   setRedFlag: (detected: boolean, reason: string | null) => void;
   setAyushMode: (enabled: boolean) => void;
-  setPatientInfo: (info: { name: string; age: string; gender: string } | null) => void;
+  setPatientInfo: (info: { age: string; gender: string } | null) => void;
   queueOfflineMutation: (mutation: Omit<OfflineMutation, "id" | "timestamp">) => Promise<void>;
   syncOfflineQueue: () => Promise<void>;
 }
