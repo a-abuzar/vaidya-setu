@@ -20,6 +20,8 @@ export function HoldToSpeak({
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<BlobPart[]>([]);
   const recognition = useRef<any>(null);
+  const isPressingRef = useRef(false);
+  const startAttemptRef = useRef(0);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -35,8 +37,18 @@ export function HoldToSpeak({
       return;
     }
 
+    const attempt = ++startAttemptRef.current;
+    isPressingRef.current = true;
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // If user released the button before stream was ready, or a newer press happened
+      if (!isPressingRef.current || startAttemptRef.current !== attempt) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
       const recorder = new MediaRecorder(stream);
       mediaRecorder.current = recorder;
       audioChunks.current = [];
@@ -81,6 +93,8 @@ export function HoldToSpeak({
 
   const stopRecording = useCallback(async (e?: React.SyntheticEvent) => {
     if (e) e.preventDefault();
+    isPressingRef.current = false;
+    
     if (!mediaRecorder.current || mediaRecorder.current.state === "inactive") return;
     
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
@@ -146,7 +160,7 @@ export function HoldToSpeak({
   };
 
   return (
-    <div className={`relative flex flex-col items-center justify-center ${className}`}>
+    <div className={`relative inline-flex items-center justify-center ${className}`}>
       {/* Animated audio ripples when recording */}
       {isRecording && (
         <>
@@ -159,9 +173,9 @@ export function HoldToSpeak({
       <Button
         size="lg"
         variant={isRecording ? "destructive" : "default"}
-        className={`w-full h-full min-w-16 min-h-16 rounded-full flex flex-col items-center justify-center shadow-2xl transition-all duration-300 touch-none select-none relative z-10 
-          ${isRecording ? "scale-110 shadow-red-500/50 bg-red-500" : "hover:scale-105 bg-teal-600 hover:bg-teal-700 shadow-teal-500/30"}
-          ${!className ? "w-32 h-32" : ""}`}
+        className={`w-full h-full rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 touch-none select-none relative z-10 
+          ${isRecording ? "scale-105 shadow-red-500/50 bg-red-500" : "hover:scale-105 bg-teal-600 hover:bg-teal-700 shadow-teal-500/30"}
+          ${!className ? "px-8 py-6 gap-3 min-h-16" : "min-h-12"}`}
         onPointerDown={startRecording}
         onPointerUp={stopRecording}
         onPointerLeave={stopRecording}
@@ -170,23 +184,32 @@ export function HoldToSpeak({
         disabled={disabled}
       >
         {isRecording ? (
-          <div className="flex flex-col items-center gap-2">
-            <Mic size={iconSize * 0.83} className="animate-pulse" />
-            <div className="flex gap-1 h-3">
-              <div className="w-1 bg-white rounded-full animate-[bounce_1s_infinite]" />
-              <div className="w-1 bg-white rounded-full animate-[bounce_1s_infinite_0.2s]" />
-              <div className="w-1 bg-white rounded-full animate-[bounce_1s_infinite_0.4s]" />
-            </div>
+          <div className={`flex items-center ${!className ? "gap-3" : "flex-col gap-2"}`}>
+            <Mic size={!className ? iconSize * 0.7 : iconSize * 0.83} className="animate-pulse text-white" />
+            {className && (
+              <div className="flex gap-1 h-3">
+                <div className="w-1 bg-white rounded-full animate-[bounce_1s_infinite]" />
+                <div className="w-1 bg-white rounded-full animate-[bounce_1s_infinite_0.2s]" />
+                <div className="w-1 bg-white rounded-full animate-[bounce_1s_infinite_0.4s]" />
+              </div>
+            )}
+            {!className && (
+              <span className="text-xl font-bold tracking-wide text-white">
+                Listening...
+              </span>
+            )}
           </div>
         ) : (
-          <Mic size={iconSize} className="text-white" />
+          <div className="flex items-center gap-3">
+            <Mic size={!className ? iconSize * 0.7 : iconSize} className="text-white" />
+            {!className && (
+              <span className="text-xl font-bold tracking-wide text-white">
+                Hold to Speak
+              </span>
+            )}
+          </div>
         )}
       </Button>
-      {!className && (
-        <span className={`mt-6 text-xl font-bold tracking-wide transition-colors duration-300 ${isRecording ? 'text-red-500' : 'text-teal-600'}`}>
-          {isRecording ? "Listening... (Release to send)" : "Hold to Speak"}
-        </span>
-      )}
     </div>
   );
 }
