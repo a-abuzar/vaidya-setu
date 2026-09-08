@@ -18,7 +18,6 @@ import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   CheckCircle2,
-  Loader2,
   Activity,
   Keyboard,
 } from "lucide-react";
@@ -26,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { KioskShell } from "@/components/kiosk/KioskShell";
+import { ThinkingIndicator } from "@/components/kiosk/ThinkingIndicator";
 import { VirtualKeyboard } from "@/components/kiosk/VirtualKeyboard";
 import { useKioskUi } from "@/lib/store/kiosk-ui";
 import { useSessionStore, type TranscriptEntry } from "@/lib/store/session";
@@ -93,8 +93,14 @@ export default function EncounterPage(): React.ReactElement {
   } = useSessionStore();
 
   const [pendingUtterance, setPendingUtterance] = useState<string | null>(null);
-  const [touchOptions, setTouchOptions] = useState<TouchOption[]>(() => getFallbackOptions(language));
-  const [bootstrap, setBootstrap] = useState<SessionBootstrap>({ status: "idle" });
+  const [customOptions, setCustomOptions] = useState<TouchOption[] | null>(null);
+  const touchOptions = useMemo(
+    () => customOptions ?? getFallbackOptions(language),
+    [customOptions, language]
+  );
+  const [bootstrap, setBootstrap] = useState<SessionBootstrap>(() =>
+    sessionId !== null ? { status: "ready", sessionId } : { status: "idle" }
+  );
   const [isKeyboardMode, setIsKeyboardMode] = useState(false);
   const [keyboardValue, setKeyboardValue] = useState("");
   const initLockRef = useRef(false);
@@ -135,21 +141,7 @@ export default function EncounterPage(): React.ReactElement {
   }, [keyboardValue]);
 
   useEffect(() => {
-    setTouchOptions((prev) => {
-      const isFallback = prev.length === FALLBACK_OPTION_IDS.length && prev.every((p, i) => p.id === FALLBACK_OPTION_IDS[i]);
-      if (isFallback) {
-        return getFallbackOptions(language);
-      }
-      return prev;
-    });
-  }, [language]);
-
-  useEffect(() => {
-    if (initLockRef.current) return;
-    if (sessionId !== null) {
-      setBootstrap({ status: "ready", sessionId });
-      return;
-    }
+    if (initLockRef.current || sessionId !== null) return;
     initLockRef.current = true;
     setBootstrap({ status: "loading" });
 
@@ -170,18 +162,24 @@ export default function EncounterPage(): React.ReactElement {
           throw new Error(`HTTP ${res.status}: ${text}`);
         }
         const payload = (await res.json()) as
-          | { success: true; data: { sessionId: string; patientId: string | null } }
+          | { success: true; data: { sessionId: string; patientId: string | null; isOfflineFallback?: boolean } }
           | { success: false; error: { code: string; message: string } };
         if (!payload.success) {
           throw new Error(payload.error.message);
         }
         startSession(payload.data.sessionId, payload.data.patientId, language);
         setBootstrap({ status: "ready", sessionId: payload.data.sessionId });
+        if (payload.data.isOfflineFallback) {
+          toast.warning(t(language, "error.network"));
+        }
       } catch (error: unknown) {
-        const message =
-          error instanceof Error ? error.message : "Could not start session.";
-        console.error("[encounter] session bootstrap failed", error);
-        setBootstrap({ status: "error", message });
+        console.error("[encounter] session bootstrap failed; falling back to offline session:", error);
+        // Fallback: Ensure patient is never blocked on the kiosk
+        const fallbackSessionId = crypto.randomUUID();
+        const fallbackPatientId = crypto.randomUUID();
+        startSession(fallbackSessionId, fallbackPatientId, language);
+        setBootstrap({ status: "ready", sessionId: fallbackSessionId });
+        toast.warning(t(language, "error.network"));
       }
     })();
   }, [sessionId, language, startSession]);
@@ -250,7 +248,7 @@ export default function EncounterPage(): React.ReactElement {
             timestamp: new Date().toISOString(),
           });
         }
-        setTouchOptions(getFallbackOptions(language));
+        setCustomOptions(null);
 
         const sid = useSessionStore.getState().sessionId;
         if (sid) {
@@ -356,10 +354,14 @@ export default function EncounterPage(): React.ReactElement {
   if (bootstrap.status === "loading") {
     return (
       <KioskShell step="encounter">
-        <StatusPlaceholder
-          icon={<Loader2 className="size-12 animate-spin" />}
-          title={t(language, "encounter.processing")}
-        />
+        <div className="flex flex-1 items-center justify-center py-12">
+          <ThinkingIndicator
+            variant="fullscreen"
+            title={t(language, "encounter.preparing")}
+            subtitle={t(language, "encounter.preparing.desc")}
+            className="w-full max-w-xl"
+          />
+        </div>
       </KioskShell>
     );
   }
@@ -411,10 +413,11 @@ export default function EncounterPage(): React.ReactElement {
           {currentQuestion ?? t(language, "encounter.placeholder")}
         </h2>
         {isProcessing ? (
-          <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            {t(language, "encounter.processing")}
-          </div>
+          <ThinkingIndicator
+            variant="inline"
+            title={t(language, "encounter.processing")}
+            className="mt-1"
+          />
         ) : null}
       </section>
 
