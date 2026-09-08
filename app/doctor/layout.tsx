@@ -13,17 +13,14 @@
  */
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
-
-const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
-const isBypassed = process.env.CLERK_BYPASS === "true";
-const hasClerk = !isBypassed && publishableKey.startsWith("pk_");
+import { isClerkActive } from "@/lib/clerk-status";
 
 export default async function DoctorLayout({
   children,
 }: {
   children: ReactNode;
 }): Promise<React.ReactElement> {
-  if (!hasClerk) {
+  if (!isClerkActive()) {
     // Development / demo bypass.
     return <div className="min-h-screen bg-background font-sans">{children}</div>;
   }

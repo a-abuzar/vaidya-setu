@@ -41,9 +41,7 @@ export const metadata: Metadata = {
  * runtime auth check that treats the same condition as "signed in
  * (demo mode)" so the dashboard remains explorable in development.
  */
-const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
-const isBypassed = process.env.CLERK_BYPASS === "true";
-const hasClerk = !isBypassed && publishableKey.startsWith("pk_");
+import { isClerkActive } from "@/lib/clerk-status";
 
 export default async function RootLayout({
   children,
@@ -62,7 +60,7 @@ export default async function RootLayout({
     </html>
   );
 
-  if (!hasClerk) {
+  if (!isClerkActive()) {
     // Render without ClerkProvider so the app boots without real keys.
     return tree;
   }

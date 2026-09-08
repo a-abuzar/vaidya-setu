@@ -12,10 +12,9 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Sparkles } from "lucide-react";
+import { isClerkActive } from "@/lib/clerk-status";
 
-const publishableKey =
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
-const hasClerk = publishableKey.startsWith("pk_");
+const hasClerk = isClerkActive();
 
 const ClerkSignIn = dynamic(
   async () => {

@@ -19,10 +19,9 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Sparkles, ClipboardList, Stethoscope, UserCircle2, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isClerkActive } from "@/lib/clerk-status";
 
-const publishableKey =
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
-const hasClerk = publishableKey.startsWith("pk_");
+const hasClerk = isClerkActive();
 
 const UserButton = hasClerk
   ? dynamic(

@@ -16,13 +16,9 @@
  */
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
+import { isClerkActive } from "@/lib/clerk-status";
 
 const isDoctorRoute = createRouteMatcher(["/doctor(.*)"]);
-
-const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
-const bypassClerk =
-  process.env.CLERK_BYPASS === "true" ||
-  !publishableKey.startsWith("pk_");
 
 const realMiddleware = clerkMiddleware(async (auth, req) => {
   if (isDoctorRoute(req)) {
@@ -34,7 +30,7 @@ function noopMiddleware(_req: NextRequest): NextResponse {
   return NextResponse.next();
 }
 
-export default bypassClerk ? noopMiddleware : realMiddleware;
+export default isClerkActive() ? realMiddleware : noopMiddleware;
 
 export const config = {
   matcher: [

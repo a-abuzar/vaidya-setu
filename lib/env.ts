@@ -48,7 +48,8 @@ const serverEnvSchema = z.object({
 // ──────────────────────────────────────────────────────────────────────
 
 const clientEnvSchema = z.object({
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: optionalWithFallback("clerk_publishable_bypassed"),
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: optionalWithFallback(""),
+  NEXT_PUBLIC_CLERK_BYPASS: optionalWithFallback("true"),
 });
 
 // ──────────────────────────────────────────────────────────────────────
@@ -71,7 +72,8 @@ function validateEnv(): z.infer<typeof envSchema> {
       DATABASE_URL: process.env.DATABASE_URL || "postgres://build:build@localhost:5432/build",
       ABDM_CLIENT_ID: process.env.ABDM_CLIENT_ID || "placeholder_abdm_client_id",
       ABDM_CLIENT_SECRET: process.env.ABDM_CLIENT_SECRET || "placeholder_abdm_client_secret",
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "pk_test_placeholder",
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "",
+      NEXT_PUBLIC_CLERK_BYPASS: process.env.NEXT_PUBLIC_CLERK_BYPASS || "true",
     };
   }
 
