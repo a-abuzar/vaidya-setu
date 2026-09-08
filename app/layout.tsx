@@ -42,7 +42,8 @@ export const metadata: Metadata = {
  * (demo mode)" so the dashboard remains explorable in development.
  */
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
-const hasClerk = publishableKey.startsWith("pk_");
+const isBypassed = process.env.CLERK_BYPASS === "true";
+const hasClerk = !isBypassed && publishableKey.startsWith("pk_");
 
 export default async function RootLayout({
   children,

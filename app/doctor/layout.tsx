@@ -15,7 +15,8 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
-const hasClerk = publishableKey.startsWith("pk_");
+const isBypassed = process.env.CLERK_BYPASS === "true";
+const hasClerk = !isBypassed && publishableKey.startsWith("pk_");
 
 export default async function DoctorLayout({
   children,

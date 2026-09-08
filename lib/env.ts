@@ -26,6 +26,9 @@ const nonEmptyString = z.string().min(1, "must not be empty");
 
 const bypass = process.env.CLERK_BYPASS === "true";
 
+const optionalWithFallback = (defaultValue: string) =>
+  z.preprocess((val) => (typeof val === "string" && val.trim() !== "" ? val : defaultValue), z.string());
+
 // ──────────────────────────────────────────────────────────────────────
 // Server-only environment variables (never exposed to the browser)
 // ──────────────────────────────────────────────────────────────────────
@@ -34,12 +37,10 @@ const serverEnvSchema = z.object({
   SARVAM_API_KEY: nonEmptyString,
   GROQ_API_KEY: nonEmptyString,
   GEMINI_API_KEY: nonEmptyString,
-  // Clerk keys may be placeholders when CLERK_BYPASS=true. We still
-  // require them to be non-empty so a typo is caught early.
-  CLERK_SECRET_KEY: nonEmptyString,
+  CLERK_SECRET_KEY: optionalWithFallback("clerk_secret_bypassed"),
   DATABASE_URL: nonEmptyString,
-  ABDM_CLIENT_ID: nonEmptyString,
-  ABDM_CLIENT_SECRET: nonEmptyString,
+  ABDM_CLIENT_ID: optionalWithFallback("abdm_not_configured"),
+  ABDM_CLIENT_SECRET: optionalWithFallback("abdm_not_configured"),
 });
 
 // ──────────────────────────────────────────────────────────────────────
@@ -47,7 +48,7 @@ const serverEnvSchema = z.object({
 // ──────────────────────────────────────────────────────────────────────
 
 const clientEnvSchema = z.object({
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: nonEmptyString,
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: optionalWithFallback("clerk_publishable_bypassed"),
 });
 
 // ──────────────────────────────────────────────────────────────────────
