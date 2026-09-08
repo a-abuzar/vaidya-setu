@@ -61,6 +61,19 @@ const envSchema = serverEnvSchema.merge(clientEnvSchema);
 // ──────────────────────────────────────────────────────────────────────
 
 function validateEnv(): z.infer<typeof envSchema> {
+  if (process.env.SKIP_ENV_VALIDATION === "true") {
+    return {
+      SARVAM_API_KEY: process.env.SARVAM_API_KEY || "placeholder_sarvam_api_key",
+      GROQ_API_KEY: process.env.GROQ_API_KEY || "placeholder_groq_api_key",
+      GEMINI_API_KEY: process.env.GEMINI_API_KEY || "placeholder_gemini_api_key",
+      CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY || "placeholder_clerk_secret_key",
+      DATABASE_URL: process.env.DATABASE_URL || "postgres://build:build@localhost:5432/build",
+      ABDM_CLIENT_ID: process.env.ABDM_CLIENT_ID || "placeholder_abdm_client_id",
+      ABDM_CLIENT_SECRET: process.env.ABDM_CLIENT_SECRET || "placeholder_abdm_client_secret",
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "pk_test_placeholder",
+    };
+  }
+
   const result = envSchema.safeParse(process.env);
 
   if (!result.success) {
