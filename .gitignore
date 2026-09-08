@@ -44,3 +44,7 @@ next-env.d.ts
 /.agent
 /.agents
 /prompts
+
+# cloudflare / opennext
+/.open-next/
+/.wrangler/

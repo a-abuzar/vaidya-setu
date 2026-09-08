@@ -26,10 +26,10 @@ import { ConsentCapturePayloadSchema } from "@/lib/consent-types";
 export const runtime = "nodejs";
 
 interface R2Bucket {
-  put(key: string, value: any, options?: any): Promise<any>;
-  get(key: string, options?: any): Promise<any>;
+  put(key: string, value: unknown, options?: unknown): Promise<unknown>;
+  get(key: string, options?: unknown): Promise<unknown>;
   delete(key: string | string[]): Promise<void>;
-  list(options?: any): Promise<any>;
+  list(options?: unknown): Promise<unknown>;
 }
 
 type Bindings = {
@@ -242,7 +242,17 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
     async (c) => {
       const sessionId = c.req.param("id");
       const { file, doc_type } = c.req.valid("form");
-      const bucket = c.env["vaidyasetu-documents"];
+      let bucket: R2Bucket | undefined = c.env?.["vaidyasetu-documents"];
+
+      if (!bucket) {
+        try {
+          const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+          const cf = await getCloudflareContext({ async: true });
+          bucket = (cf.env as unknown as { "vaidyasetu-documents"?: R2Bucket })["vaidyasetu-documents"];
+        } catch {
+          // Cloudflare context not available (e.g. running outside worker environment)
+        }
+      }
 
       if (!bucket) {
         return c.json({ success: false, error: { code: "STORAGE_ERROR", message: "R2 bucket not bound", retryable: false } }, 500);
