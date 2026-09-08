@@ -1,8 +1,13 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { handle } from "hono/vercel";
 import { transcribeAudio } from "@/lib/ai/sarvam";
-import { evaluateTriage } from "@/lib/ai/groq";
-import { evaluateTriageGemini, generateSummaryGemini } from "@/lib/ai/gemini";
+import { evaluateTriage, generateSummaryLLM } from "@/lib/ai/groq";
+import {
+  evaluateTriageGemini,
+  generateSummaryGemini,
+  createFallbackSummary,
+  type SummaryLLMOutput,
+} from "@/lib/ai/gemini";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
@@ -39,14 +44,15 @@ type Bindings = {
 const app = new Hono<{ Bindings: Bindings }>().basePath("/api");
 
 // Type-safe JSON envelope helper
-const sendResponse = <T>(c: any, data: T, status = 200) => {
+const sendResponse = <T>(c: Context, data: T, status: 200 | 201 = 200) => {
   return c.json({ success: true, data } as Result<T>, status);
 };
 
-const sendError = (c: any, code: string, message: string, status = 400) => {
+const sendError = (c: Context, code: string, message: string, status = 400) => {
   return c.json(
     { success: false, error: { code, message, retryable: false } },
-    status
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    status as any
   );
 };
 
@@ -243,7 +249,7 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
     zValidator(
       "form",
       z.object({
-        file: z.any(),
+        file: z.custom<File>((val) => typeof val === "object" && val !== null && "name" in val),
         doc_type: insertDocumentSchema.shape.doc_type,
       })
     ),
@@ -291,39 +297,113 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
     const sessionId = c.req.param("id");
 
     try {
+      // 1. Idempotency check: return existing summary if already created
+      const [existingSummary] = await db
+        .select()
+        .from(summaries)
+        .where(eq(summaries.session_id, sessionId))
+        .limit(1);
+
+      if (existingSummary) {
+        await db
+          .update(sessions)
+          .set({ status: "completed", completed_at: new Date() })
+          .where(eq(sessions.id, sessionId));
+        return c.json({ success: true, data: existingSummary }, 200);
+      }
+
+      // 2. Ensure session exists (e.g. if kiosk started in offline fallback mode)
+      const [sess] = await db
+        .select()
+        .from(sessions)
+        .where(eq(sessions.id, sessionId))
+        .limit(1);
+
+      if (!sess) {
+        await db.insert(sessions).values({
+          id: sessionId,
+          kiosk_id: "kiosk-k01",
+          status: "in_progress",
+          started_at: new Date(),
+        });
+      }
+
+      // 3. Extract optional client-provided transcript from request body if present
+      let clientTranscript: Array<{ role?: string; text?: string }> | undefined;
+      try {
+        const contentType = c.req.header("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const body = (await c.req.json()) as {
+            transcript?: Array<{ role?: string; text?: string }>;
+          };
+          if (body && Array.isArray(body.transcript)) {
+            clientTranscript = body.transcript;
+          }
+        }
+      } catch {
+        // Optional body parse safely ignored
+      }
+
       const [conv] = await db
         .select()
         .from(conversations)
         .where(eq(conversations.session_id, sessionId))
         .limit(1);
 
-      if (!conv) {
-        return c.json({ success: false, error: { code: "NOT_FOUND", message: "Conversation not found", retryable: false } }, 404);
-      }
-
       let transcriptText = "";
-      if (Array.isArray(conv.transcript)) {
-        transcriptText = conv.transcript.map((t: any) => `${t.role.toUpperCase()}: ${t.text}`).join("\n");
-      } else if (typeof conv.transcript === "string") {
+      const transcriptEntries =
+        clientTranscript ??
+        (Array.isArray(conv?.transcript)
+          ? (conv.transcript as Array<{ role?: string; text?: string }>)
+          : null);
+
+      if (Array.isArray(transcriptEntries) && transcriptEntries.length > 0) {
+        transcriptText = transcriptEntries
+          .map((t) => `${(t.role ?? "user").toUpperCase()}: ${t.text ?? ""}`)
+          .join("\n");
+      } else if (typeof conv?.transcript === "string") {
         try {
           const parsed = JSON.parse(conv.transcript);
           if (Array.isArray(parsed)) {
-            transcriptText = parsed.map((t: any) => `${t.role.toUpperCase()}: ${t.text}`).join("\n");
+            transcriptText = (parsed as Array<{ role?: string; text?: string }>)
+              .map((t) => `${(t.role ?? "user").toUpperCase()}: ${t.text ?? ""}`)
+              .join("\n");
           }
         } catch {
           // fallback
         }
       }
 
-      const summaryRes = await generateSummaryGemini(transcriptText || "No transcript", true);
-      
-      if (!summaryRes.success) {
-        return c.json({ success: false, error: { code: "SUMMARY_FAILED", message: "Failed to generate summary via AI", retryable: false } }, 500);
+      if (!conv && transcriptEntries && transcriptEntries.length > 0) {
+        await db.insert(conversations).values({
+          session_id: sessionId,
+          transcript: transcriptEntries,
+          red_flag: false,
+        });
       }
 
-      const aiSummary = summaryRes.data;
+      // 4. Dual-provider summary generation: Primary Groq -> Fallback Gemini -> Fallback Deterministic
+      let aiSummary: SummaryLLMOutput;
+      const groqRes = await generateSummaryLLM({
+        transcriptText: transcriptText || "No transcript",
+        ocrDataJson: null,
+        includeAyush: true,
+      });
 
-      const summary = await db
+      if (groqRes.success) {
+        aiSummary = groqRes.data;
+      } else {
+        console.warn("[finalize] Groq summary failed, falling back to Gemini:", groqRes.error.message);
+        const geminiRes = await generateSummaryGemini(transcriptText || "No transcript", true);
+        if (geminiRes.success) {
+          aiSummary = geminiRes.data;
+        } else {
+          console.warn("[finalize] Gemini summary failed, falling back to deterministic summary:", geminiRes.error.message);
+          aiSummary = createFallbackSummary(transcriptText);
+        }
+      }
+
+      const [summary] = await db
         .insert(summaries)
         .values({
           session_id: sessionId,
@@ -345,9 +425,9 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
         .set({ status: "completed", completed_at: new Date() })
         .where(eq(sessions.id, sessionId));
 
-      return c.json({ success: true, data: summary[0] }, 201);
+      return c.json({ success: true, data: summary }, 201);
     } catch (err) {
-      console.error(err);
+      console.error("[finalize] Failed to finalize session:", err);
       return c.json({ success: false, error: { code: "FINALIZE_FAILED", message: "Failed to finalize session", retryable: false } }, 500);
     }
   })

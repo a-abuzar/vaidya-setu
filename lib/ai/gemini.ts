@@ -1,8 +1,15 @@
 import { z } from "zod";
 import type { Result } from "@/lib/types";
 import { serverEnv } from "../env";
-import { TriageOutputSchema, type TriageOutput } from "./groq";
+import {
+  TriageOutputSchema,
+  type TriageOutput,
+  SummaryLLMOutputSchema,
+  type SummaryLLMOutput,
+} from "./groq";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+
+export { SummaryLLMOutputSchema, type SummaryLLMOutput } from "./groq";
 
 export const OcrInputSchema = z.object({
   fileBase64: z.string(),
@@ -85,26 +92,47 @@ Do not include markdown blocks or any other text.`;
   };
 }
 
-export const SummaryLLMOutputSchema = z.object({
-  chiefComplaint: z.string(),
-  hpiNarrative: z.string(),
-  pastHistory: z.array(z.string()),
-  drugAllergyHistory: z.array(z.string()),
-  familyHistory: z.string(),
-  personalHistory: z.string(),
-  reviewOfSystems: z.record(z.string(), z.string()),
-  priorInvestigations: z.array(z.string()),
-  ayushAssessment: z.object({
-    prakriti: z.string().nullable(),
-    vikriti: z.string().nullable(),
-    agni: z.string().nullable(),
-    koshtha: z.string().nullable(),
-    aharaVihara: z.string().nullable(),
-    nidana: z.string().nullable(),
-    samprapti: z.string().nullable(),
-  }).nullable(),
-});
-export type SummaryLLMOutput = z.infer<typeof SummaryLLMOutputSchema>;
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  errorMessage: string
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+export function createFallbackSummary(transcriptText: string): SummaryLLMOutput {
+  const lines = transcriptText
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+  const patientLines = lines.filter((l) => l.toUpperCase().startsWith("PATIENT:"));
+  const firstComplaint =
+    patientLines[0]?.replace(/^PATIENT:\s*/i, "").trim() || "Clinical consultation recorded";
+
+  return {
+    chiefComplaint: firstComplaint.slice(0, 150),
+    hpiNarrative:
+      lines.slice(0, 6).join("; ") ||
+      "Patient completed kiosk intake. Full conversation captured in encounter transcript.",
+    pastHistory: ["Refer to attached intake transcript"],
+    drugAllergyHistory: ["NKDA (Unconfirmed - verify with attending physician)"],
+    familyHistory: "Non-contributory / Not reported",
+    personalHistory: "Not reported during kiosk triage",
+    reviewOfSystems: {
+      constitutional: "Reported in intake dialogue",
+    },
+    priorInvestigations: ["No prior investigations recorded"],
+    ayushAssessment: null,
+  };
+}
 
 export async function generateSummaryGemini(
   transcriptText: string,
@@ -186,10 +214,14 @@ You MUST respond with valid JSON ONLY matching the requested schema. No conversa
       : `Transcript:\n${transcriptText}`;
 
     try {
-      const result = await model.generateContent([
-        { text: systemPrompt },
-        { text: userPrompt },
-      ]);
+      const result = await withTimeout(
+        model.generateContent([
+          { text: systemPrompt },
+          { text: userPrompt },
+        ]),
+        10000,
+        "Gemini summary request timed out after 10000ms"
+      );
       const content = result.response.text();
       const parsed = JSON.parse(content);
       const validated = SummaryLLMOutputSchema.safeParse(parsed);

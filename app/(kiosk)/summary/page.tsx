@@ -145,10 +145,21 @@ export default function SummaryPage(): React.ReactElement {
     if (!sessionId) return;
     setSubmitting(true);
     try {
-      const res = await rpcClient.api.sessions[":id"].finalize.$post({
-        param: { id: sessionId },
+      try {
+        await useSessionStore.getState().syncOfflineQueue();
+      } catch (syncErr) {
+        console.warn("[summary] pre-finalize sync queue failed:", syncErr);
+      }
+
+      const res = await fetch(`/api/sessions/${sessionId}/finalize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript }),
       });
-      if (!res.ok) throw new Error(`Finalize HTTP ${res.status}`);
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Finalize HTTP ${res.status}: ${errText}`);
+      }
       const payload = (await res.json()) as
         | { success: true; data: unknown }
         | { success: false; error: { message: string } };

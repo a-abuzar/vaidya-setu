@@ -47,13 +47,21 @@ export type SummaryLLMInput = z.infer<typeof SummaryLLMInputSchema>;
 export const SummaryLLMOutputSchema = z.object({
   chiefComplaint: z.string(),
   hpiNarrative: z.string(),
-  pastHistory: z.string(),
-  drugAllergyHistory: z.string(),
+  pastHistory: z.array(z.string()),
+  drugAllergyHistory: z.array(z.string()),
   familyHistory: z.string(),
   personalHistory: z.string(),
-  reviewOfSystems: z.string(),
-  priorInvestigations: z.string(),
-  ayushAssessment: z.string().nullable(),
+  reviewOfSystems: z.record(z.string(), z.string()),
+  priorInvestigations: z.array(z.string()),
+  ayushAssessment: z.object({
+    prakriti: z.string().nullable(),
+    vikriti: z.string().nullable(),
+    agni: z.string().nullable(),
+    koshtha: z.string().nullable(),
+    aharaVihara: z.string().nullable(),
+    nidana: z.string().nullable(),
+    samprapti: z.string().nullable(),
+  }).nullable(),
 });
 export type SummaryLLMOutput = z.infer<typeof SummaryLLMOutputSchema>;
 
@@ -137,7 +145,128 @@ Do not include markdown blocks or any other text.`;
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function generateSummaryLLM(_input: SummaryLLMInput): Promise<Result<SummaryLLMOutput>> {
-  return { success: false, error: { code: "NOT_IMPLEMENTED", message: "Stub", retryable: false } };
+export async function generateSummaryLLM(
+  input: SummaryLLMInput
+): Promise<Result<SummaryLLMOutput>> {
+  const systemPrompt = `You are an expert clinical history documentation engine for an Indian government AYUSH Outpatient Department (OPD).
+Given a patient-kiosk intake transcript, extract and synthesize a structured, professional clinical summary for the attending physician.
+
+Requirements:
+1. chiefComplaint: Formal clinical terminology with duration (e.g., "Acute epigastric pain radiating to back for 3 days"). Never layperson phrasing.
+2. hpiNarrative: Objective third-person clinical narrative detailing onset, progression, SOCRATES pain characteristics if applicable, and pertinent negatives.
+3. pastHistory: Array of diagnosed chronic conditions or surgeries (e.g. ["Type 2 Diabetes Mellitus (4 years)", "Primary Hypertension"]). If none reported, return ["No significant past medical history reported"].
+4. drugAllergyHistory: Array of active medications and allergies (e.g. ["NKDA (No Known Drug Allergies)", "Tab Metformin 500mg BD"]). If none reported, return ["NKDA (No known drug allergies)", "No active prescription medications reported"].
+5. familyHistory: Concise clinical string (e.g. "Maternal Type 2 Diabetes" or "Non-contributory").
+6. personalHistory: Lifestyle factors (diet, sleep, bowel/bladder, tobacco, alcohol).
+7. reviewOfSystems: Record of organ systems, e.g. {"constitutional": "Afebrile, no weight loss", "respiratory": "Dry cough present; denies dyspnea", "cardiovascular": "Denies chest pain or palpitations"}.
+8. priorInvestigations: Array of prior labs or imaging (e.g. ["CBC normal (2 days ago)"] or ["No prior investigations reported"]).
+9. ayushAssessment: ${
+    input.includeAyush
+      ? `A structured AYUSH Dashavidha Pariksha assessment object with fields:
+         - prakriti: Constitutional baseline dosha (e.g. "Vata-Pitta predominant", "Pitta-Kapha", or null)
+         - vikriti: Current morbidity/doshic imbalance (e.g. "Vata vriddhi with Kapha avarodha", or null)
+         - agni: Digestive fire state (e.g. "Manda Agni", "Vishama Agni", or null)
+         - koshtha: Bowel habit (e.g. "Krura Koshtha", "Madhyama Koshtha", or null)
+         - aharaVihara: Dietary and lifestyle habits (string or null)
+         - nidana: Identified etiological factors (string or null)
+         - samprapti: Concise pathogenesis summary (string or null)`
+      : `null`
+  }
+
+You MUST respond with valid JSON ONLY conforming strictly to this schema:
+{
+  "chiefComplaint": string,
+  "hpiNarrative": string,
+  "pastHistory": string[],
+  "drugAllergyHistory": string[],
+  "familyHistory": string,
+  "personalHistory": string,
+  "reviewOfSystems": Record<string, string>,
+  "priorInvestigations": string[],
+  "ayushAssessment": {
+    "prakriti": string | null,
+    "vikriti": string | null,
+    "agni": string | null,
+    "koshtha": string | null,
+    "aharaVihara": string | null,
+    "nidana": string | null,
+    "samprapti": string | null
+  } | null
 }
+Do not include markdown blocks or any conversational text.`;
+
+  let attempt = 0;
+  let validationError = "";
+
+  while (attempt < 2) {
+    attempt++;
+    const userPrompt = validationError
+      ? `Transcript:\n${input.transcriptText}\n\nYour previous response failed validation with the following error:\n${validationError}\n\nPlease correct your response to strictly match the required JSON schema.`
+      : `Transcript:\n${input.transcriptText}${input.ocrDataJson ? `\n\nOCR Documents:\n${input.ocrDataJson}` : ""}`;
+
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${serverEnv.GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "qwen/qwen3.8-27b",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.1,
+          response_format: { type: "json_object" },
+        }),
+        signal: AbortSignal.timeout(12000),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        return {
+          success: false,
+          error: {
+            code: "GROQ_API_ERROR",
+            message: `Groq error: ${response.status} - ${errText}`,
+            retryable: true,
+          },
+        };
+      }
+
+      const data = (await response.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) {
+        throw new Error("Empty response from Groq");
+      }
+
+      const parsed = JSON.parse(content);
+      const validated = SummaryLLMOutputSchema.safeParse(parsed);
+
+      if (validated.success) {
+        return { success: true, data: validated.data };
+      } else {
+        validationError = validated.error.message;
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Unknown error";
+      return {
+        success: false,
+        error: { code: "GROQ_NETWORK_ERROR", message: msg, retryable: true },
+      };
+    }
+  }
+
+  return {
+    success: false,
+    error: {
+      code: "GROQ_VALIDATION_FAILED",
+      message: "Groq summary failed validation repeatedly.",
+      retryable: false,
+    },
+  };
+}
+
