@@ -38,9 +38,6 @@ export default function BasicInfoPage(): React.ReactElement {
     } else {
       setAge((prev) => (prev.length < 3 ? prev + key : prev));
     }
-    if (ageInputRef.current) {
-      ageInputRef.current.focus();
-    }
   }, []);
 
   const genderOptions = [
@@ -77,16 +74,14 @@ export default function BasicInfoPage(): React.ReactElement {
               <input
                 ref={ageInputRef}
                 id="patient-age"
-                type="number"
-                inputMode="numeric"
+                type="text"
+                inputMode="none"
+                readOnly
+                tabIndex={-1}
                 autoComplete="off"
                 placeholder={t(language, "basic.agePlaceholder")}
-                className="w-full min-h-14 rounded-xl border-2 border-input bg-background px-4 text-2xl font-bold tracking-wider focus:border-[var(--primary-mid)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-light)]"
+                className="w-full min-h-14 rounded-xl border-2 border-input bg-background px-4 text-2xl font-bold tracking-wider cursor-default select-none focus:border-[var(--primary-mid)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-light)]"
                 value={age}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/[^0-9]/g, "").slice(0, 3);
-                  setAge(val);
-                }}
                 aria-label={t(language, "basic.age")}
               />
             </Field>

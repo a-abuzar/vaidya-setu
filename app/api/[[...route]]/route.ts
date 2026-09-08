@@ -191,6 +191,8 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
       z.object({
         status: insertSessionSchema.shape.status.optional(),
         transcript: insertConversationSchema.shape.transcript.optional(),
+        redFlag: insertConversationSchema.shape.red_flag.optional(),
+        redFlagReason: insertConversationSchema.shape.red_flag_reason.optional(),
       })
     ),
     async (c) => {
@@ -205,7 +207,7 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
             .where(eq(sessions.id, sessionId));
         }
 
-        if (body.transcript) {
+        if (body.transcript !== undefined || body.redFlag !== undefined || body.redFlagReason !== undefined) {
           const existingConv = await db.query.conversations.findFirst({
             where: eq(conversations.session_id, sessionId),
           });
@@ -213,12 +215,18 @@ const sessionRouter = new Hono<{ Bindings: Bindings }>()
           if (existingConv) {
             await db
               .update(conversations)
-              .set({ transcript: body.transcript })
+              .set({
+                ...(body.transcript !== undefined ? { transcript: body.transcript } : {}),
+                ...(body.redFlag !== undefined ? { red_flag: body.redFlag } : {}),
+                ...(body.redFlagReason !== undefined ? { red_flag_reason: body.redFlagReason } : {}),
+              })
               .where(eq(conversations.id, existingConv.id));
           } else {
             await db.insert(conversations).values({
               session_id: sessionId,
-              transcript: body.transcript,
+              transcript: body.transcript ?? [],
+              red_flag: body.redFlag ?? false,
+              red_flag_reason: body.redFlagReason ?? null,
             });
           }
         }

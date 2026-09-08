@@ -7,12 +7,12 @@ interface VirtualNumpadProps {
   className?: string;
 }
 
-export function VirtualNumpad({ onKeyPress, className }: VirtualNumpadProps) {
-  const handleKey = (key: string) => {
+export function VirtualNumpad({ onKeyPress, className }: VirtualNumpadProps): React.ReactElement {
+  const handleKey = (key: string): void => {
     onKeyPress(key);
   };
 
-  const handleBackspace = () => {
+  const handleBackspace = (): void => {
     onKeyPress("Backspace");
   };
 

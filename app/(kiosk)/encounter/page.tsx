@@ -90,6 +90,7 @@ export default function EncounterPage(): React.ReactElement {
     setRedFlag,
     queueOfflineMutation,
     startSession,
+    resetSession,
   } = useSessionStore();
 
   const [pendingUtterance, setPendingUtterance] = useState<string | null>(null);
@@ -233,8 +234,22 @@ export default function EncounterPage(): React.ReactElement {
         const triage = triageJson.data;
 
         if (triage.redFlag) {
-          setRedFlag(true, triage.redFlagReason ?? "Emergency symptom detected");
-          toast.error(triage.redFlagReason ?? "Red flag detected");
+          const reason = triage.redFlagReason ?? "Emergency symptom detected";
+          setRedFlag(true, reason);
+          toast.error(reason);
+
+          const sid = useSessionStore.getState().sessionId;
+          if (sid) {
+            void rpcClient.api.sessions[":id"].$patch({
+              param: { id: sid },
+              json: {
+                status: "escalated",
+                transcript: [...transcript, entry],
+                redFlag: true,
+                redFlagReason: reason,
+              },
+            });
+          }
           return;
         }
 
@@ -344,7 +359,11 @@ export default function EncounterPage(): React.ReactElement {
       <RedFlagInterrupt
         reason={redFlagReason}
         onAcknowledge={() => {
+          cancelSpeech();
           toast.success(t(language, "redflag.notify"));
+          resetSession();
+          useConsentStore.getState().reset();
+          router.push("/");
         }}
         onContinueAnyway={() => setRedFlag(false, null)}
       />
