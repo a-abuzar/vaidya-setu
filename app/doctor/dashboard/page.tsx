@@ -82,10 +82,13 @@ export default function DoctorDashboardPage(): React.ReactElement {
     setError(null);
     try {
       const res = await fetch("/api/doctor/sessions", { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const payload = (await res.json()) as
+      const payload = (await res.json().catch(() => null)) as
         | { success: true; data: SessionRow[] }
-        | { success: false; error: { message: string } };
+        | { success: false; error: { message: string } }
+        | null;
+      if (!res.ok || !payload) {
+        throw new Error(payload && !payload.success ? payload.error.message : `HTTP ${res.status}`);
+      }
       if (!payload.success) throw new Error(payload.error.message);
       setSessions(payload.data);
     } catch (err: unknown) {

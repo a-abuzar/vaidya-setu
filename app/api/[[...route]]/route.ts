@@ -422,50 +422,85 @@ const doctorRouter = new Hono<{ Bindings: Bindings }>()
         .from(sessions)
         .orderBy(sessions.started_at);
 
-      // Project each session with summary + document counts.
-      const projected = await Promise.all(
-        rows.map(async (r) => {
-          const [conv] = await db
-            .select()
-            .from(conversations)
-            .where(eq(conversations.session_id, r.id))
-            .limit(1);
-          const [sum] = await db
-            .select()
-            .from(summaries)
-            .where(eq(summaries.session_id, r.id))
-            .limit(1);
-          const docs = await db
-            .select({ id: documents.id })
-            .from(documents)
-            .where(eq(documents.session_id, r.id));
-          let chiefComplaint = sum?.chief_complaint ?? "";
-          if (!chiefComplaint && conv?.transcript) {
-            try {
-              const tArray = Array.isArray(conv.transcript) 
-                ? conv.transcript 
-                : typeof conv.transcript === "string" ? JSON.parse(conv.transcript) : [];
-              if (Array.isArray(tArray)) {
-                const firstPatient = tArray.find((m: any) => m.role === "patient");
-                if (firstPatient) chiefComplaint = firstPatient.text.slice(0, 80) + (firstPatient.text.length > 80 ? "..." : "");
-              }
-            } catch (e) {
-              // ignore
-            }
-          }
+      if (rows.length === 0) {
+        return c.json({ success: true, data: [] });
+      }
 
-          return {
-            id: r.id,
-            patientId: r.patientId,
-            status: r.status,
-            startedAt: r.startedAt?.toISOString() ?? new Date().toISOString(),
-            completedAt: r.completedAt?.toISOString() ?? null,
-            redFlag: conv?.red_flag ?? false,
-            documentCount: docs.length,
-            chiefComplaint,
-          };
-        }),
-      );
+      // Fetch related records in bulk to prevent N+1 query subrequest exhaustion in Cloudflare Workers
+      const allConversations = await db
+        .select({
+          session_id: conversations.session_id,
+          red_flag: conversations.red_flag,
+          transcript: conversations.transcript,
+        })
+        .from(conversations);
+
+      const allSummaries = await db
+        .select({
+          session_id: summaries.session_id,
+          chief_complaint: summaries.chief_complaint,
+        })
+        .from(summaries);
+
+      const allDocuments = await db
+        .select({
+          id: documents.id,
+          session_id: documents.session_id,
+        })
+        .from(documents);
+
+      const convMap = new Map<string, (typeof allConversations)[number]>();
+      for (const conv of allConversations) {
+        convMap.set(conv.session_id, conv);
+      }
+
+      const summaryMap = new Map<string, string>();
+      for (const sum of allSummaries) {
+        summaryMap.set(sum.session_id, sum.chief_complaint);
+      }
+
+      const docCountMap = new Map<string, number>();
+      for (const doc of allDocuments) {
+        docCountMap.set(doc.session_id, (docCountMap.get(doc.session_id) ?? 0) + 1);
+      }
+
+      const projected = rows.map((r) => {
+        const conv = convMap.get(r.id);
+        let chiefComplaint = summaryMap.get(r.id) ?? "";
+        if (!chiefComplaint && conv?.transcript) {
+          try {
+            const tArray = Array.isArray(conv.transcript)
+              ? conv.transcript
+              : typeof conv.transcript === "string"
+                ? JSON.parse(conv.transcript)
+                : [];
+            if (Array.isArray(tArray)) {
+              const firstPatient = tArray.find(
+                (m: { role?: string; text?: string }) => m?.role === "patient",
+              );
+              if (firstPatient?.text) {
+                chiefComplaint =
+                  firstPatient.text.slice(0, 80) +
+                  (firstPatient.text.length > 80 ? "..." : "");
+              }
+            }
+          } catch {
+            // ignore malformed transcript
+          }
+        }
+
+        return {
+          id: r.id,
+          patientId: r.patientId,
+          status: r.status,
+          startedAt: r.startedAt?.toISOString() ?? new Date().toISOString(),
+          completedAt: r.completedAt?.toISOString() ?? null,
+          redFlag: conv?.red_flag ?? false,
+          documentCount: docCountMap.get(r.id) ?? 0,
+          chiefComplaint,
+        };
+      });
+
       return c.json({ success: true, data: projected });
     } catch (err) {
       console.error("[doctor] list sessions failed", err);
