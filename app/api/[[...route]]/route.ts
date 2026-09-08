@@ -639,6 +639,48 @@ const doctorRouter = new Hono<{ Bindings: Bindings }>()
       );
     }
   })
+  // PATCH /api/doctor/sessions/:id — update chief complaint and/or HPI by physician.
+  .patch(
+    "/sessions/:id",
+    zValidator(
+      "json",
+      z.object({
+        chiefComplaint: z.string().optional(),
+        hpi: z.string().optional(),
+      })
+    ),
+    async (c) => {
+      const id = c.req.param("id");
+      const { chiefComplaint, hpi } = c.req.valid("json");
+      try {
+        const updateData: { chief_complaint?: string; hpi?: string; physician_edited: boolean } = {
+          physician_edited: true,
+        };
+        if (chiefComplaint !== undefined) updateData.chief_complaint = chiefComplaint;
+        if (hpi !== undefined) updateData.hpi = hpi;
+
+        await db
+          .update(summaries)
+          .set(updateData)
+          .where(eq(summaries.session_id, id));
+
+        return c.json({ success: true, data: { ok: true } });
+      } catch (err) {
+        console.error("[doctor] patch summary failed", err);
+        return c.json(
+          {
+            success: false,
+            error: {
+              code: "UPDATE_FAILED",
+              message: err instanceof Error ? err.message : "Unknown error",
+              retryable: false,
+            },
+          },
+          500
+        );
+      }
+    }
+  )
   // POST /api/doctor/sessions/:id/fhir — generate FHIR DiagnosticReport
   // and (mock) push to ABDM. Uses lib/ai/abdm.ts::mapSummaryToFHIR
   // — kept server-side per module boundaries.
