@@ -1,10 +1,10 @@
 <div align="center">
 
-# 🌿 VaidyaSetu
+# VaidyaSetu
 
 **AI-Assisted Patient Case-Taking Software for AYUSH OPDs**
 
-*Built for Smart India Hackathon 2024 — Problem Statement 26047*
+*Built for Smart India Hackathon 2026 — Problem Statement 26047*
 *Ministry of AYUSH · All India Institute of Ayurveda*
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org)
@@ -23,27 +23,40 @@
 
 ## 📋 Table of Contents
 
-- [What is VaidyaSetu?](#-what-is-vaidyasetu)
-- [Key Features](#-key-features)
-- [Architecture](#-architecture)
-- [Technology Stack](#-technology-stack)
-- [Database Schema](#-database-schema)
-- [AI Services](#-ai-services)
-- [Project Structure](#-project-structure)
-- [Getting Started](#-getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Environment Variables](#environment-variables)
-  - [Database Setup](#database-setup)
-  - [Running Locally](#running-locally)
-  - [Deploying to Cloudflare](#deploying-to-cloudflare)
-- [Application Flow](#-application-flow)
-- [Physician Dashboard](#-physician-dashboard)
-- [Accessibility Design](#-accessibility-design)
-- [Compliance & Privacy](#-compliance--privacy)
-- [API Reference](#-api-reference)
-- [Contributing](#-contributing)
-- [License](#-license)
+- [VaidyaSetu](#vaidyasetu)
+  - [📋 Table of Contents](#-table-of-contents)
+  - [🏥 What is VaidyaSetu?](#-what-is-vaidyasetu)
+  - [✨ Key Features](#-key-features)
+    - [Patient-Facing Kiosk](#patient-facing-kiosk)
+    - [Accessibility](#accessibility)
+    - [Physician Dashboard](#physician-dashboard)
+  - [🏗️ Architecture](#️-architecture)
+  - [🛠️ Technology Stack](#️-technology-stack)
+  - [🗄️ Database Schema](#️-database-schema)
+  - [🤖 AI Services](#-ai-services)
+    - [Speech-to-Text — `saaras:v3`](#speech-to-text--saarasv3)
+    - [Text-to-Speech — `bulbul:v3`](#text-to-speech--bulbulv3)
+    - [Triage LLM — Groq + Gemini](#triage-llm--groq--gemini)
+    - [Clinical Summary — Gemini](#clinical-summary--gemini)
+  - [📁 Project Structure](#-project-structure)
+  - [🚀 Getting Started](#-getting-started)
+    - [Prerequisites](#prerequisites)
+    - [Installation](#installation)
+    - [Environment Variables](#environment-variables)
+    - [Database Setup](#database-setup)
+    - [Running Locally](#running-locally)
+    - [Deploying to Cloudflare](#deploying-to-cloudflare)
+  - [🔄 Application Flow](#-application-flow)
+  - [👨‍⚕️ Physician Dashboard](#️-physician-dashboard)
+  - [♿ Accessibility Design](#-accessibility-design)
+  - [🔒 Compliance \& Privacy](#-compliance--privacy)
+  - [📡 API Reference](#-api-reference)
+    - [AI Routes (`/api/ai`)](#ai-routes-apiai)
+    - [Session Routes (`/api/sessions`)](#session-routes-apisessions)
+    - [Doctor Routes (`/api/doctor`) — Clerk-protected](#doctor-routes-apidoctor--clerk-protected)
+  - [🤝 Contributing](#-contributing)
+    - [Development Guidelines](#development-guidelines)
+  - [📄 License](#-license)
 
 ---
 
@@ -574,7 +587,7 @@ You are free to fork, modify, and deploy VaidyaSetu in your own AYUSH or communi
 
 <div align="center">
 
-**Built with ❤️ for Smart India Hackathon 2024**
+**Built with ❤️ for Smart India Hackathon 2026**
 
 *Problem Statement 26047 — Ministry of AYUSH, All India Institute of Ayurveda*
 
